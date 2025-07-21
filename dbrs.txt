@@ -1,0 +1,4 @@
+user=root
+password=lilsnew
+host=localhost
+database=lilipos
