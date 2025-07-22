@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (QMainWindow, QToolBar, QPushButton, QStatusBar, Q
                                QWidget, QComboBox, QLineEdit, QSpacerItem, QSizePolicy, QApplication, QMessageBox, QDialog, QVBoxLayout, QProgressBar)
 from datetime import datetime
 from databaseutils import DatabaseManager
-from landingpage import POSHomePage
+from saleslandingpage import POSHomePage
 
 
 class MainLoginWindow(QWidget):

@@ -69,10 +69,18 @@ class DatabaseManager:
                 cursor.execute("SELECT position FROM users WHERE username = %s", (username,))
                 result = cursor.fetchone()
                 if result:
-                    resultlevel = result['']  # Assuming 'pass_rank' is a key in the returned dict
+                    resultlevel = result['position']  # Assuming 'pass_rank' is a key in the returned dict
                     return resultlevel
                 else:
                     return None
         except pymysql.MySQLError as e:
             print(f"Error: {e}")
             return None
+    def fetch_categories_for_orders(self):#get districts for main window
+        try:
+            with self.connection.cursor() as cursor:
+                cursor.execute("SELECT category_name FROM categories")
+                return [row['category_name'] for row in cursor.fetchall()]
+        except pymysql.MySQLError as e:
+            print(f"Error fetching districts: {e}")
+            return []
