@@ -66,10 +66,10 @@ class DatabaseManager:
     def get_passlevel(self, username):
         try:
             with self.connection.cursor() as cursor:
-                cursor.execute("SELECT pass_rank FROM pass_table WHERE username = %s", (username,))
+                cursor.execute("SELECT position FROM users WHERE username = %s", (username,))
                 result = cursor.fetchone()
                 if result:
-                    resultlevel = result['pass_rank']  # Assuming 'pass_rank' is a key in the returned dict
+                    resultlevel = result['']  # Assuming 'pass_rank' is a key in the returned dict
                     return resultlevel
                 else:
                     return None

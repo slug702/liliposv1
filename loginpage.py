@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (QMainWindow, QToolBar, QPushButton, QStatusBar, Q
                                QWidget, QComboBox, QLineEdit, QSpacerItem, QSizePolicy, QApplication, QMessageBox, QDialog, QVBoxLayout, QProgressBar)
 from datetime import datetime
 from databaseutils import DatabaseManager
+from landingpage import POSHomePage
 
 
 class MainLoginWindow(QWidget):
@@ -129,6 +130,7 @@ class MainLoginWindow(QWidget):
             }
         """)
         self.login_mainbtn.setIconSize(QSize(24, 24))
+        self.login_mainbtn.clicked.connect(self.login_Clicked)
         login_card_layout.addWidget(self.login_mainbtn)
 
         login_hint = QLabel("IT Department: 09171550252 (Globe) or 09218614475 (Smart)")
@@ -148,6 +150,17 @@ class MainLoginWindow(QWidget):
     def populate_usernames(self):
         usernames = self.database_manager.fetch_usernames()
         self.selectuserbox.addItems(usernames)
+    def login_Clicked(self):
+        username = self.selectuserbox.currentText()
+        password = self.passwordbox.text()
+        rank = self.database_manager.get_passlevel(username)
+        if self.database_manager.verify_credentials(username, password):
+
+            self.next_screenacc = POSHomePage(username, rank)
+            self.next_screenacc.show()
+            self.hide()
+        else:
+            QMessageBox.warning(self, "Login Error", "Incorrect username or password")
 
 
 if __name__ == "__main__":
