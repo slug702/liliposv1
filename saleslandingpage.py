@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import (
     QWidget, QPushButton, QVBoxLayout, QLabel, QHBoxLayout, QScrollArea, QLineEdit,
-    QSizePolicy, QComboBox, QTableWidget, QTableWidgetItem, QTableView, QSpacerItem, QGridLayout, QFrame
+    QSizePolicy, QComboBox, QTableWidget, QTableWidgetItem, QTableView, QSpacerItem, QGridLayout, QFrame, QHeaderView
 )
 from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Qt
@@ -105,26 +105,40 @@ class POSHomePage(QWidget):
                 border: 2px solid #1877F2;
             }
         """)
-
+        self.search_btn = QPushButton("Search")
+        self.search_btn.setStyleSheet(self.button_style)
         filters_layout = QHBoxLayout()
         filters_layout.addWidget(self.sub_category)
         filters_layout.addWidget(self.search_box)
-
+        filters_layout.addWidget(self.search_btn)
+        
         # === PRODUCT GRID ===
         self.product_grid = QGridLayout()
-        dummy_products = ["fried chicken", "spaghetti", "burger", "burger", "meal1", "meal2"]
-        for idx, name in enumerate(dummy_products):
-            img = QLabel()
-            img.setPixmap(QPixmap("_internal/resources/images/samplefood.png").scaled(100, 100, Qt.KeepAspectRatio))
-            img.setAlignment(Qt.AlignCenter)
-            label = QLabel(name)
-            label.setAlignment(Qt.AlignCenter)
-            v = QVBoxLayout()
-            v.addWidget(img)
-            v.addWidget(label)
-            wrapper = QWidget()
-            wrapper.setLayout(v)
-            self.product_grid.addWidget(wrapper, idx // 4, idx % 4)
+        all_products = self.db_manager.fetch_all_products()
+        # === PRODUCT GRID ===
+        self.product_grid = QGridLayout()
+        all_products = self.db_manager.fetch_all_products()
+
+        for idx, name in enumerate(all_products):
+            btn = QPushButton(name)
+            btn.setFixedSize(150, 60)  # consistent size
+            btn.setStyleSheet("""
+                QPushButton {
+                    font-size: 14px;
+                    padding: 8px;
+                    background-color: #f0f0f0;
+                    border: 1px solid #ccc;
+                    border-radius: 6px;
+                }
+                QPushButton:hover {
+                    background-color: #e0e0e0;
+                }
+            """)
+            
+            # connect to future slot if needed
+            # btn.clicked.connect(lambda checked, n=name: self.handle_product_click(n))
+
+            self.product_grid.addWidget(btn, idx // 4, idx % 4)
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -134,10 +148,66 @@ class POSHomePage(QWidget):
 
         # === ORDER SUMMARY CART ===
         self.order_table = QTableWidget(5, 3)
+        self.order_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.order_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.order_table.setHorizontalHeaderLabels(["quantity", "name", "price"])
         self.order_table.verticalHeader().setVisible(False)
         self.order_table.setSelectionBehavior(QTableView.SelectRows)
         self.order_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.order_table.setStyleSheet("""
+          QTableWidget {
+                border: 0px solid #000000; /*  borders for structure */
+                background-color: #FFFFFF;
+                font-family: 'Segoe UI', sans-serif; /* Consistent font across the interface */
+            }
+
+            
+            QHeaderView::section {
+                background-color: #F5F5F5; /* Lighter gray for headers */
+                padding: 2px 8px; /* Reduced padding for a sleeker look */
+                border: none; /* Remove border for a flatter design */
+                border-radius: 4px;
+                font-size: 14px; /* Smaller font size */
+                color: #333; /* Darker text color for better contrast */
+            }
+
+            
+
+                        QTableCornerButton::section {
+                    background: #F5F5F5; /* Light gray background for the corner button */
+                    border: 1px solid #D3D3D3; /* Light gray border */
+                    border-radius: 4px; /* Slightly rounded corners */
+                }
+
+                QScrollBar:vertical {
+                    border: none;
+                    background: #E8EAE6; /* Light neutral background color for the scrollbar */
+                    width: 14px;
+                    margin: 18px 0 18px 0;
+                }
+
+                QScrollBar::handle:vertical {
+                    background: #BCC0C4; /* Slightly darker gray for the scrollbar handle */
+                    min-height: 20px;
+                    border-radius: 7px; /* Rounded handle for a modern look */
+                }
+
+                QScrollBar::add-line:vertical {
+                    background: #D1D3D4; /* Slightly darker for the add line control */
+                    height: 14px;
+                    subcontrol-position: bottom;
+                    subcontrol-origin: margin;
+                    border-radius: 7px;
+                }
+
+                QScrollBar::sub-line:vertical {
+                    background: #D1D3D4; /* Slightly darker for the sub line control */
+                    height: 14px;
+                    subcontrol-position: top;
+                    subcontrol-origin: margin;
+                    border-radius: 7px;
+                }
+        """)
 
         order_data = [["3", "meal3", "3"], ["3", "fried chicken", "3"], ["3", "burger", "3"]]
         for i, row in enumerate(order_data):
@@ -153,7 +223,11 @@ class POSHomePage(QWidget):
             btn.setStyleSheet(self.button_style)
 
         order_layout = QVBoxLayout()
-        order_layout.addWidget(self.order_table)
+
+        # Let the table grow to fill vertical space
+        order_layout.addWidget(self.order_table)  # no alignment flag
+        order_layout.addStretch()  # pushes the rest to the bottom
+
         order_layout.addWidget(self.total_label)
         order_layout.addWidget(self.btn_discount)
         order_layout.addWidget(self.btn_place)
@@ -175,6 +249,8 @@ class POSHomePage(QWidget):
         ordnum = self.ordernumber.currentText()
         self.ordernumber.currentIndexChanged.connect(self.update_header)
         self.addorderbtn = QPushButton("Add Product")
+        self.removebtn = QPushButton("Remove")
+        self.removebtn.setStyleSheet(self.button_style)
         self.combobtn = QPushButton("Create Combo Meal")
         btn.setStyleSheet(self.button_style)
         nav_layout = QVBoxLayout()
@@ -189,6 +265,7 @@ class POSHomePage(QWidget):
         nav_layout.addWidget(self.createorder, alignment=Qt.AlignLeft)
         nav_layout.addWidget(self.ordernumber, alignment=Qt.AlignLeft)
         nav_layout.addWidget(self.addorderbtn, alignment=Qt.AlignLeft)
+        nav_layout.addWidget(self.removebtn, alignment=Qt.AlignLeft)
         nav_layout.addWidget(self.combobtn, alignment=Qt.AlignLeft)
         for btn in [self.gotoorders, self.gotoinventory, self.gotosettings, self.gotoreports, self.gotoadmin, self.addorderbtn, self.combobtn, self.createorder, self.viewtables]:
             btn.setMinimumHeight(40)

@@ -82,5 +82,13 @@ class DatabaseManager:
                 cursor.execute("SELECT category_name FROM categories")
                 return [row['category_name'] for row in cursor.fetchall()]
         except pymysql.MySQLError as e:
-            print(f"Error fetching districts: {e}")
+            print(f"Error fetching categories: {e}")
+            return []
+    def fetch_all_products(self):
+        try:
+            with self.connection.cursor() as cursor:
+                cursor.execute("SELECT `product_desc` FROM products")
+                return [row['product_desc'] for row in cursor.fetchall()]
+        except pymysql.MySQLError as e:
+            print(f"Error fetching products: {e}")
             return []
