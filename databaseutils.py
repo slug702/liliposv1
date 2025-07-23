@@ -92,3 +92,52 @@ class DatabaseManager:
         except pymysql.MySQLError as e:
             print(f"Error fetching products: {e}")
             return []
+    def fetch_all_products_with_filter(self, category_picked):
+        try:
+            with self.connection.cursor() as cursor:
+                query = "SELECT `product_desc` FROM products WHERE category_name = %s"
+                cursor.execute(query, (category_picked,))
+                return [row['product_desc'] for row in cursor.fetchall()]
+        except pymysql.MySQLError as e:
+            print(f"Error fetching products: {e}")
+            return []
+    def fetch_subcategories_by_category(self, category_picked):
+        try:
+            with self.connection.cursor() as cursor:
+                query = """
+                    SELECT DISTINCT sub_category FROM products
+                    WHERE category_name = %s AND sub_category IS NOT NULL
+                """
+                cursor.execute(query, (category_picked,))
+                return [row['sub_category'] for row in cursor.fetchall()]
+        except pymysql.MySQLError as e:
+            print(f"Error fetching subcategories: {e}")
+            return []
+    def fetch_products_by_category_and_sub(self, category_picked, subcat):
+        try:
+            with self.connection.cursor() as cursor:
+                if subcat == "All":
+                    query = "SELECT product_desc FROM products WHERE category_name = %s"
+                    cursor.execute(query, (category_picked,))
+                else:
+                    query = "SELECT product_desc FROM products WHERE category_name = %s AND sub_category = %s"
+                    cursor.execute(query, (category_picked, subcat))
+                return [row['product_desc'] for row in cursor.fetchall()]
+        except pymysql.MySQLError as e:
+            print(f"Error fetching products: {e}")
+            return []
+    
+    def fetch_products_with_search(self, searchedfor):
+        try:
+            with self.connection.cursor() as cursor:
+                query = """
+                    SELECT product_desc
+                    FROM products
+                    WHERE product_desc LIKE %s
+                """
+                search_term = f"%{searchedfor}%"  # for partial match
+                cursor.execute(query, (search_term,))
+                return [row['product_desc'] for row in cursor.fetchall()]
+        except pymysql.MySQLError as e:
+            print(f"Error searching products: {e}")
+            return []

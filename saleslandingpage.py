@@ -90,7 +90,8 @@ class POSHomePage(QWidget):
         # === SUB-CATEGORY + SEARCH ===
         self.sub_category = QComboBox()
         self.sub_category.setStyleSheet(self.combobox_style)
-        self.sub_category.addItems(['Sub-Categories'])
+        self.sub_category.addItem("Select Category")
+        self.sub_category.setEnabled(False)
         self.search_box = QLineEdit()
         self.search_box.setPlaceholderText("Search...")
         self.search_box.setStyleSheet("""
@@ -111,41 +112,7 @@ class POSHomePage(QWidget):
         filters_layout.addWidget(self.sub_category)
         filters_layout.addWidget(self.search_box)
         filters_layout.addWidget(self.search_btn)
-        
-        # === PRODUCT GRID ===
-        self.product_grid = QGridLayout()
-        all_products = self.db_manager.fetch_all_products()
-        # === PRODUCT GRID ===
-        self.product_grid = QGridLayout()
-        all_products = self.db_manager.fetch_all_products()
-
-        for idx, name in enumerate(all_products):
-            btn = QPushButton(name)
-            btn.setFixedSize(150, 60)  # consistent size
-            btn.setStyleSheet("""
-                QPushButton {
-                    font-size: 14px;
-                    padding: 8px;
-                    background-color: #f0f0f0;
-                    border: 1px solid #ccc;
-                    border-radius: 6px;
-                }
-                QPushButton:hover {
-                    background-color: #e0e0e0;
-                }
-            """)
-            
-            # connect to future slot if needed
-            # btn.clicked.connect(lambda checked, n=name: self.handle_product_click(n))
-
-            self.product_grid.addWidget(btn, idx // 4, idx % 4)
-
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        container = QWidget()
-        container.setLayout(self.product_grid)
-        scroll.setWidget(container)
-
+        self.search_btn.clicked.connect(self.load_products_with_search)
         # === ORDER SUMMARY CART ===
         self.order_table = QTableWidget(5, 3)
         self.order_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -248,7 +215,7 @@ class POSHomePage(QWidget):
         self.ordernumber.setStyleSheet(self.combobox_style)
         ordnum = self.ordernumber.currentText()
         self.ordernumber.currentIndexChanged.connect(self.update_header)
-        self.addorderbtn = QPushButton("Add Product")
+        #self.addorderbtn = QPushButton("Add Product")
         self.removebtn = QPushButton("Remove")
         self.removebtn.setStyleSheet(self.button_style)
         self.combobtn = QPushButton("Create Combo Meal")
@@ -264,21 +231,21 @@ class POSHomePage(QWidget):
         nav_layout.addWidget(self.viewtables, alignment=Qt.AlignLeft)
         nav_layout.addWidget(self.createorder, alignment=Qt.AlignLeft)
         nav_layout.addWidget(self.ordernumber, alignment=Qt.AlignLeft)
-        nav_layout.addWidget(self.addorderbtn, alignment=Qt.AlignLeft)
+        #nav_layout.addWidget(self.addorderbtn, alignment=Qt.AlignLeft)
         nav_layout.addWidget(self.removebtn, alignment=Qt.AlignLeft)
         nav_layout.addWidget(self.combobtn, alignment=Qt.AlignLeft)
-        for btn in [self.gotoorders, self.gotoinventory, self.gotosettings, self.gotoreports, self.gotoadmin, self.addorderbtn, self.combobtn, self.createorder, self.viewtables]:
+        for btn in [self.gotoorders, self.gotoinventory, self.gotosettings, self.gotoreports, self.gotoadmin, self.combobtn, self.createorder, self.viewtables]:
             btn.setMinimumHeight(40)
             btn.setStyleSheet(self.button_style)    
         
         # === CENTRAL COMPOSITION ===
-        center_content = QVBoxLayout()
-        center_content.addLayout(filters_layout)
-        center_content.addWidget(scroll)
+        self.center_content = QVBoxLayout()
+        self.center_content.addLayout(filters_layout)
+        
 
         main_content = QHBoxLayout()
         main_content.addLayout(nav_layout, 1)
-        main_content.addLayout(center_content, 4)
+        main_content.addLayout(self.center_content, 4)
         main_content.addLayout(order_layout, 2)
         # === HEADER ===
         header_layout = QHBoxLayout()
@@ -295,7 +262,9 @@ class POSHomePage(QWidget):
         main_layout.addLayout(header_layout)
         main_layout.addLayout(top_category_layout)
         main_layout.addLayout(main_content)
+        self.load_products()
         
+        self.sub_category.currentIndexChanged.connect(self.handle_subcategory_change)
         self.setLayout(main_layout)
 
     # === Placeholder: Load categories dynamically ===
@@ -305,7 +274,7 @@ class POSHomePage(QWidget):
     def load_categories(self):
         # Clear existing buttons
         
-
+        
         categories = self.db_manager.fetch_categories_for_orders()
         for name in categories:
             btn = QPushButton(name)
@@ -315,14 +284,185 @@ class POSHomePage(QWidget):
             self.category_bar_layout.addWidget(btn)
 
     # === Placeholder: Load subcategories dynamically ===
+    def handle_subcategory_change(self):
+        
+        subcat = self.sub_category.currentText()
+        self.subcattopass = self.sub_category.currentText()
+        self.load_products_with_filters_and_sub()
+        print(f"Selected sub-category changed to: {subcat}")
+    
+    def load_products_with_filters_and_sub(self):
+        self.clear_center_content()
+
+        self.product_grid = QGridLayout()
+
+        all_products = self.db_manager.fetch_products_by_category_and_sub(
+            self.category_picked,
+            self.subcattopass
+        )
+
+        for idx, name in enumerate(all_products):
+            btn = QPushButton(name)
+            btn.setFixedSize(150, 60)  # consistent size
+            btn.setStyleSheet("""
+                QPushButton {
+                    font-size: 14px;
+                    padding: 8px;
+                    background-color: #f0f0f0;
+                    border: 1px solid #ccc;
+                    border-radius: 6px;
+                }
+                QPushButton:hover {
+                    background-color: #e0e0e0;
+                }
+            """)
+            
+            # connect to future slot if needed
+            # btn.clicked.connect(lambda checked, n=name: self.handle_product_click(n))
+
+            self.product_grid.addWidget(btn, idx // 4, idx % 4)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        container = QWidget()
+        container.setLayout(self.product_grid)
+        scroll.setWidget(container)
+        self.center_content.addWidget(scroll)
+    def load_products(self):
+        self.clear_center_content()
+        # === PRODUCT GRID ===
+        self.product_grid = QGridLayout()
+        all_products = self.db_manager.fetch_all_products()
+
+        for idx, name in enumerate(all_products):
+            btn = QPushButton(name)
+            btn.setFixedSize(150, 60)  # consistent size
+            btn.setStyleSheet("""
+                QPushButton {
+                    font-size: 14px;
+                    padding: 8px;
+                    background-color: #f0f0f0;
+                    border: 1px solid #ccc;
+                    border-radius: 6px;
+                }
+                QPushButton:hover {
+                    background-color: #e0e0e0;
+                }
+            """)
+            
+            # connect to future slot if needed
+            # btn.clicked.connect(lambda checked, n=name: self.handle_product_click(n))
+
+            self.product_grid.addWidget(btn, idx // 4, idx % 4)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        container = QWidget()
+        container.setLayout(self.product_grid)
+        scroll.setWidget(container)
+        self.center_content.addWidget(scroll)
+    def load_products_with_search(self):
+        
+        
+        self.sub_category.setEnabled(False)
+        self.sub_category.clear()
+        self.sub_category.addItem("Select Category")
+        search_term = self.search_box.text().strip()
+        self.clear_center_content()
+        all_products = self.db_manager.fetch_products_with_search(search_term)
+
+        self.product_grid = QGridLayout()
+
+        for idx, name in enumerate(all_products):
+            btn = QPushButton(name)
+            btn.setFixedSize(150, 60)
+            btn.setStyleSheet("""
+                QPushButton {
+                    font-size: 14px;
+                    padding: 8px;
+                    background-color: #f0f0f0;
+                    border: 1px solid #ccc;
+                    border-radius: 6px;
+                }
+                QPushButton:hover {
+                    background-color: #e0e0e0;
+                }
+            """)
+            self.product_grid.addWidget(btn, idx // 4, idx % 4)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        container = QWidget()
+        container.setLayout(self.product_grid)
+        scroll.setWidget(container)
+
+        self.center_content.addWidget(scroll)
+    def load_products_with_filters(self):
+        
+        self.clear_center_content()
+        self.category_picked
+        # === PRODUCT GRID ===
+        self.product_grid = QGridLayout()
+        self.load_subcategories(self.category_picked)
+        all_products = self.db_manager.fetch_all_products_with_filter(self.category_picked)
+
+        for idx, name in enumerate(all_products):
+            btn = QPushButton(name)
+            btn.setFixedSize(150, 60)  # consistent size
+            btn.setStyleSheet("""
+                QPushButton {
+                    font-size: 14px;
+                    padding: 8px;
+                    background-color: #f0f0f0;
+                    border: 1px solid #ccc;
+                    border-radius: 6px;
+                }
+                QPushButton:hover {
+                    background-color: #e0e0e0;
+                }
+            """)
+            
+            # connect to future slot if needed
+            # btn.clicked.connect(lambda checked, n=name: self.handle_product_click(n))
+
+            self.product_grid.addWidget(btn, idx // 4, idx % 4)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        container = QWidget()
+        container.setLayout(self.product_grid)
+        scroll.setWidget(container)
+        self.center_content.addWidget(scroll)
     def handle_category_click(self, category_name):
+        self.sub_category.setEnabled(True)
         print(f"Filtering products by category: {category_name}")
-        #self.display_products(category_name) #THIS WILL BE THE ONE TO CHANGE THE CURRENT CATEGORIES SHOWN
+        self.category_picked = category_name
+
+        if category_name == "All":
+            self.sub_category.setEnabled(False)
+            self.sub_category.clear()
+            self.sub_category.addItem("Select Category")
+            self.load_products()
+        else:
+            self.load_subcategories(category_name)
+            self.subcattopass = self.sub_category.currentText()
+            self.load_products_with_filters_and_sub()
+    def clear_center_content(self):
+        for i in reversed(range(self.center_content.count())):
+            widget_item = self.center_content.itemAt(i)
+            widget = widget_item.widget()
+            if widget is not None:
+                widget.setParent(None)
     def load_subcategories(self, category_name):
         self.sub_category.clear()
-        if category_name == "Mains":
-            self.sub_category.addItems(["Rice Meal", "Pasta", "Grilled"])
-        else:
-            self.sub_category.addItems(["Option 1", "Option 2", "Option 3"])
+        
+        subcategories = self.db_manager.fetch_subcategories_by_category(category_name)
+        print(subcategories)
+        # Always include "All" as first option
+        self.sub_category.addItem("All")
+        print("loaded subcategories here")
+        self.sub_category.addItems(subcategories)
+        self.sub_category.setCurrentIndex(0)
+        self.subcattopass = "All"
 
 
