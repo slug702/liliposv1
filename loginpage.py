@@ -14,7 +14,7 @@ class MainLoginWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.setStyleSheet("background-color: #f0f4ff;")  # Soft bluish background
-        self.setWindowTitle("lili's point-of-sale")
+        self.setWindowTitle("lili's point-of-sale FILE VERSION 1.1")
         self.resize(600, 700)
         self.database_manager = DatabaseManager()
         login_screenLayout = QGridLayout()
