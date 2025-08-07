@@ -14,7 +14,7 @@ class MainLoginWindow(QWidget):
     def __init__(self):
         super().__init__()
         self.setStyleSheet("background-color: #f0f4ff;")  # Soft bluish background
-        self.setWindowTitle("lili's point-of-sale FILE VERSION 1.1")
+        self.setWindowTitle("lili's point-of-sale (version 1.0)")
         self.resize(600, 700)
         self.database_manager = DatabaseManager()
         login_screenLayout = QGridLayout()
@@ -55,7 +55,7 @@ class MainLoginWindow(QWidget):
                 background: #ffffff;
                 border-radius: 22px;
                 border: 2px solid #b0c4de;
-                box-shadow: 0 4px 24px rgba(0, 119, 182, 0.08);
+               
             }
         """)
 
@@ -122,7 +122,7 @@ class MainLoginWindow(QWidget):
                 font-weight: 600;
                 padding: 11px 0;
                 margin-top: 20px;
-                box-shadow: 0 2px 12px rgba(0, 119, 182, 0.2);
+                
             }
             QPushButton:hover {
                 background-color: #023e8a;

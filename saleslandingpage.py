@@ -5,6 +5,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Qt
 from databaseutils import DatabaseManager
+from managementpage import ManagementPage
 
 class POSHomePage(QWidget):
     def __init__(self, username, rank, parent=None):
@@ -18,59 +19,81 @@ class POSHomePage(QWidget):
         # === BUTTON STYLE ===
         self.button_style = """
             QPushButton {
-                background-color: #E8EAE6;
-                border: 2px solid #D3D3D3;
-                border-radius: 10px;
-                color: #111827;
-                font-family: 'Segoe UI', sans-serif;
+                background-color: #0077b6;  /* Deep navy blue */
+                color: white;
+                border-radius: 20px;  /* More rounded */
+                padding: 10px 24px;
                 font-size: 15px;
-                font-weight: 600;
-                padding: 10px 16px;
+                font-family: 'Segoe UI', sans-serif;
+                font-weight: 500; 
+                letter-spacing: 0.5px;
             }
             QPushButton:hover {
-                background-color: #D1D3D4;
+                background-color: #023e8a;
             }
             QPushButton:pressed {
-                background-color: #BCC0C4;
+                background-color: #023e8a;
+            }
+            QPushButton:disabled {
+                background-color: #cbd5e0;
+                color: #ffffff;
             }
         """
+
+        self.category_button_style = """
+        QPushButton {
+            background-color: white;
+            color: #000000;
+            border: 2px solid #1877F2;
+            border-radius: 12px;
+            padding: 14px 24px;
+            font-size: 16px;
+            font-family: 'Segoe UI', sans-serif;
+            font-weight: 600;
+        }
+        QPushButton:hover {
+            background-color: #f0f8ff;
+        }
+        QPushButton:pressed {
+            background-color: #e6f2ff;
+        }
+        """
         self.combobox_style = """
-    QComboBox {
-        font-size: 18px;  /* Font size for consistency */
-        font-family: 'Segoe UI', sans-serif;  /* Matching font family */
-        color: #202124;  /* Darker text color */
-        background-color: #FFFFFF;  /* Pure white background */
-        border-radius: 12px;  /* Larger border radius for a more rounded appearance */
-        padding: 7px 15px;  /* Padding for better spacing */
-        border: 2px solid #D3D3D3;  /* Light gray border */
-        
-    }
-
-    QComboBox:focus {
-        border: 2px solid #1877F2;  /* Sage green border on focus */
-        outline: none;  /* Remove default outline */
-    }
-
-    QComboBox::drop-down {
-        width: 0px;  /* Hide the drop-down arrow */
-    }
-
-    QComboBox QAbstractItemView {
-        color: #202124;  /* Darker text color for list items */
-        background-color: #FFFFFF;  /* White background for the drop-down list */
-        selection-background-color: #E8EAE6;  /* Light neutral background color when an item is selected */
-        border: 1px solid #D3D3D3;  /* Border for the drop-down list */
-        border-radius: 8px;  /* Slightly rounded corners for the drop-down list */
-    }
-"""
+        QComboBox {
+            background-color: #FFFFFF;
+            color: #202124;
+            font-size: 16px;
+            font-family: 'Segoe UI', sans-serif;
+            border: 2px solid #EBEBEB;  /* Thinner border */
+            border-radius: 14px;
+            padding: 9px 17px;  /* Keep dimensions consistent */
+        }
+        QComboBox:focus {
+            border: 1px solid #1877F2;
+            background-color: #f5faff;
+            outline: none;
+        }
+        QComboBox::drop-down {
+            width: 0px;
+        }
+        QComboBox QAbstractItemView {
+            background-color: #FFFFFF;
+            color: #202124;
+            selection-background-color: #E8EAE6;
+            border: 1px solid #EBEBEB;
+            border-radius: 8px;
+        }
+        """
 
         
 
         # === TOP CATEGORY BAR with ARROWS ===
         self.category_scroll = QScrollArea()
         self.category_scroll.setWidgetResizable(True)
+        self.category_scroll.setFrameShape(QFrame.NoFrame)
         self.category_bar_widget = QWidget()
         self.category_bar_layout = QHBoxLayout(self.category_bar_widget)
+        
         self.category_bar_layout.setSpacing(10)
         self.category_bar_layout.setContentsMargins(0, 0, 0, 0)
         self.category_scroll.setWidget(self.category_bar_widget)
@@ -95,17 +118,21 @@ class POSHomePage(QWidget):
         self.search_box = QLineEdit()
         self.search_box.setPlaceholderText("Search...")
         self.search_box.setStyleSheet("""
-            QLineEdit {
-                border: 2px solid #D3D3D3;
-                border-radius: 10px;
-                font-size: 16px;
-                padding: 6px 12px;
-                font-family: 'Segoe UI';
-            }
-            QLineEdit:focus {
-                border: 2px solid #1877F2;
-            }
+        QLineEdit {
+            background-color: #FFFFFF;
+            color: #202124;
+            border: 2px solid #EBEBEB;  /* Thinner border */
+            border-radius: 14px;
+            font-size: 16px;
+            font-family: 'Segoe UI', sans-serif;
+            padding: 9px 17px;
+        }
+        QLineEdit:focus {
+            border: 1px solid #1877F2;
+            background-color: #f5faff;
+        }
         """)
+
         self.search_btn = QPushButton("Search")
         self.search_btn.setStyleSheet(self.button_style)
         filters_layout = QHBoxLayout()
@@ -117,64 +144,65 @@ class POSHomePage(QWidget):
         self.order_table = QTableWidget(5, 3)
         self.order_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.order_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.order_table.setHorizontalHeaderLabels(["quantity", "name", "price"])
+        self.order_table.setHorizontalHeaderLabels(["quantity", "product", "price"])
         self.order_table.verticalHeader().setVisible(False)
         self.order_table.setSelectionBehavior(QTableView.SelectRows)
         self.order_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.order_table.setStyleSheet("""
-          QTableWidget {
-                border: 0px solid #000000; /*  borders for structure */
+            QTableWidget {
                 background-color: #FFFFFF;
-                font-family: 'Segoe UI', sans-serif; /* Consistent font across the interface */
+                border: 2px solid #D1D5DB;  /* Light border */
+                border-radius: 16px;
+                font-family: 'Segoe UI', sans-serif;
+                font-size: 15px;
+                font-weight: 500;
+                color: #1F2937;
+                gridline-color: transparent;
+                padding: 4px;
             }
 
-            
             QHeaderView::section {
-                background-color: #F5F5F5; /* Lighter gray for headers */
-                padding: 2px 8px; /* Reduced padding for a sleeker look */
-                border: none; /* Remove border for a flatter design */
-                border-radius: 4px;
-                font-size: 14px; /* Smaller font size */
-                color: #333; /* Darker text color for better contrast */
+                background-color: #F3F4F6;
+                color: #111827;
+                font-size: 15px;
+                font-weight: bold;
+                padding: 8px;
+                border: none;
+                border-bottom: 1px solid #D1D5DB;
             }
 
-            
+            QTableWidget::item {
+                padding: 10px;
+                border: none;
+            }
 
-                        QTableCornerButton::section {
-                    background: #F5F5F5; /* Light gray background for the corner button */
-                    border: 1px solid #D3D3D3; /* Light gray border */
-                    border-radius: 4px; /* Slightly rounded corners */
-                }
+            QTableCornerButton::section {
+                background-color: #F3F4F6;
+                border: none;
+            }
 
-                QScrollBar:vertical {
-                    border: none;
-                    background: #E8EAE6; /* Light neutral background color for the scrollbar */
-                    width: 14px;
-                    margin: 18px 0 18px 0;
-                }
+            QScrollBar:vertical {
+                border: none;
+                background: #E5E7EB;
+                width: 14px;
+                margin: 20px 0;
+                border-radius: 7px;
+            }
 
-                QScrollBar::handle:vertical {
-                    background: #BCC0C4; /* Slightly darker gray for the scrollbar handle */
-                    min-height: 20px;
-                    border-radius: 7px; /* Rounded handle for a modern look */
-                }
+            QScrollBar::handle:vertical {
+                background: #9CA3AF;
+                min-height: 20px;
+                border-radius: 7px;
+            }
 
-                QScrollBar::add-line:vertical {
-                    background: #D1D3D4; /* Slightly darker for the add line control */
-                    height: 14px;
-                    subcontrol-position: bottom;
-                    subcontrol-origin: margin;
-                    border-radius: 7px;
-                }
-
-                QScrollBar::sub-line:vertical {
-                    background: #D1D3D4; /* Slightly darker for the sub line control */
-                    height: 14px;
-                    subcontrol-position: top;
-                    subcontrol-origin: margin;
-                    border-radius: 7px;
-                }
+            QScrollBar::add-line:vertical,
+            QScrollBar::sub-line:vertical {
+                height: 0px;
+                background: none;
+            }
         """)
+
+
 
         order_data = [["3", "meal3", "3"], ["3", "fried chicken", "3"], ["3", "burger", "3"]]
         for i, row in enumerate(order_data):
@@ -182,16 +210,32 @@ class POSHomePage(QWidget):
                 self.order_table.setItem(i, j, QTableWidgetItem(val))
 
         self.total_label = QLabel("total:")
-        self.total_label.setStyleSheet("font-size: 20px; font-weight: bold; margin-top: 10px")
+        self.total_label.setStyleSheet("""
+            font-size: 20px;
+            font-weight: 600;
+            font-family: 'Segoe UI', sans-serif;
+            color: #111827;
+        """)
 
         self.btn_discount = QPushButton("add discount")
         self.btn_place = QPushButton("place order")
         for btn in [self.btn_discount, self.btn_place]:
             btn.setStyleSheet(self.button_style)
-
+        self.ordernumber = QComboBox()
+        dummy_ordernum = ("Select Order", "1", "2")
+        self.ordernumber.addItems(dummy_ordernum)
+        self.ordernumber.setStyleSheet(self.combobox_style)
+        ordnum = self.ordernumber.currentText()
+        self.ordernumber.currentIndexChanged.connect(self.update_header)
+        self.header2 = QLabel(f"Order Number: {ordnum}")
+        self.header3 = QLabel(f"Table Number: {"TBD"}")
+        self.header2.setStyleSheet("font-size: 24px; font-weight: bold; font-family: 'Segoe UI'; margin-bottom: 10px")
+        self.header3.setStyleSheet("font-size: 24px; font-weight: bold; font-family: 'Segoe UI'; margin-bottom: 10px")
         order_layout = QVBoxLayout()
 
         # Let the table grow to fill vertical space
+        order_layout.addWidget(self.header2)
+        order_layout.addWidget(self.header3)
         order_layout.addWidget(self.order_table)  # no alignment flag
         order_layout.addStretch()  # pushes the rest to the bottom
 
@@ -205,16 +249,11 @@ class POSHomePage(QWidget):
         self.gotoinventory = QPushButton ("Inventory")
         self.gotosettings = QPushButton ("Setting")
         self.gotoreports = QPushButton ("Report")
-        self.gotoadmin = QPushButton ("Admin")
+        self.gotomanagement = QPushButton ("Management")
 
         self.viewtables = QPushButton("View/Select Tables")
         self.createorder = QPushButton("Create Order")
-        self.ordernumber = QComboBox()
-        dummy_ordernum = ("Select Order", "1", "2")
-        self.ordernumber.addItems(dummy_ordernum)
-        self.ordernumber.setStyleSheet(self.combobox_style)
-        ordnum = self.ordernumber.currentText()
-        self.ordernumber.currentIndexChanged.connect(self.update_header)
+        
         #self.addorderbtn = QPushButton("Add Product")
         self.removebtn = QPushButton("Remove")
         self.removebtn.setStyleSheet(self.button_style)
@@ -225,7 +264,8 @@ class POSHomePage(QWidget):
         nav_layout.addWidget(self.gotoinventory)
         nav_layout.addWidget(self.gotosettings)
         nav_layout.addWidget(self.gotoreports)
-        nav_layout.addWidget(self.gotoadmin)
+        nav_layout.addWidget(self.gotomanagement)
+        self.gotomanagement.clicked.connect(self.show_management)
             
         nav_layout.addStretch()
         nav_layout.addWidget(self.viewtables, alignment=Qt.AlignLeft)
@@ -234,7 +274,7 @@ class POSHomePage(QWidget):
         #nav_layout.addWidget(self.addorderbtn, alignment=Qt.AlignLeft)
         nav_layout.addWidget(self.removebtn, alignment=Qt.AlignLeft)
         nav_layout.addWidget(self.combobtn, alignment=Qt.AlignLeft)
-        for btn in [self.gotoorders, self.gotoinventory, self.gotosettings, self.gotoreports, self.gotoadmin, self.combobtn, self.createorder, self.viewtables]:
+        for btn in [self.gotoorders, self.gotoinventory, self.gotosettings, self.gotoreports, self.gotomanagement, self.combobtn, self.createorder, self.viewtables]:
             btn.setMinimumHeight(40)
             btn.setStyleSheet(self.button_style)    
         
@@ -248,18 +288,11 @@ class POSHomePage(QWidget):
         main_content.addLayout(self.center_content, 4)
         main_content.addLayout(order_layout, 2)
         # === HEADER ===
-        header_layout = QHBoxLayout()
-        self.header = QLabel(f"Welcome, {username}! ")
-        self.header2 = QLabel(f"Order Number: {ordnum}")
-        self.header3 = QLabel(f"Table Number: {"TBD"}")
-        self.header.setStyleSheet("font-size: 24px; font-weight: bold; font-family: 'Segoe UI'; margin-bottom: 10px")
-        self.header2.setStyleSheet("font-size: 24px; font-weight: bold; font-family: 'Segoe UI'; margin-bottom: 10px")
-        self.header3.setStyleSheet("font-size: 24px; font-weight: bold; font-family: 'Segoe UI'; margin-bottom: 10px")
+       
+        
         main_layout = QVBoxLayout()
-        header_layout.addWidget(self.header)
-        header_layout.addWidget(self.header2, alignment=Qt.AlignLeft)
-        header_layout.addWidget(self.header3, alignment=Qt.AlignLeft)
-        main_layout.addLayout(header_layout)
+       
+       
         main_layout.addLayout(top_category_layout)
         main_layout.addLayout(main_content)
         self.load_products()
@@ -278,7 +311,7 @@ class POSHomePage(QWidget):
         categories = self.db_manager.fetch_categories_for_orders()
         for name in categories:
             btn = QPushButton(name)
-            btn.setStyleSheet(self.button_style)
+            btn.setStyleSheet(self.category_button_style)
             btn.setCursor(Qt.PointingHandCursor)
             btn.clicked.connect(lambda _, n=name: self.handle_category_click(n))  # Connect button to handler
             self.category_bar_layout.addWidget(btn)
@@ -293,7 +326,6 @@ class POSHomePage(QWidget):
     
     def load_products_with_filters_and_sub(self):
         self.clear_center_content()
-
         self.product_grid = QGridLayout()
 
         all_products = self.db_manager.fetch_products_by_category_and_sub(
@@ -301,8 +333,8 @@ class POSHomePage(QWidget):
             self.subcattopass
         )
 
-        for idx, name in enumerate(all_products):
-            btn = QPushButton(name)
+        for idx, (name, price) in enumerate(all_products):
+            btn = QPushButton(f"{name}     ₱{price}")
             btn.setFixedSize(150, 60)  # consistent size
             btn.setStyleSheet("""
                 QPushButton {
@@ -311,70 +343,43 @@ class POSHomePage(QWidget):
                     background-color: #f0f0f0;
                     border: 1px solid #ccc;
                     border-radius: 6px;
+                    text-align: left;
                 }
                 QPushButton:hover {
                     background-color: #e0e0e0;
                 }
             """)
-            
-            # connect to future slot if needed
-            # btn.clicked.connect(lambda checked, n=name: self.handle_product_click(n))
 
             self.product_grid.addWidget(btn, idx // 4, idx % 4)
 
+            # Print both name and price on click
+            btn.clicked.connect(lambda checked, n=name, p=price: print(f"Product clicked: {n} - ₱{p}"))
+
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setStyleSheet("QScrollArea { border: none; background-color: transparent; }")
+        scroll.viewport().setStyleSheet("background-color: transparent; border: none;")
+        scroll.setContentsMargins(0, 0, 0, 0)
+
         container = QWidget()
         container.setLayout(self.product_grid)
+        container.setStyleSheet("background-color: transparent; border: none;")
+        container.setContentsMargins(0, 0, 0, 0)
+
+        self.product_grid.setContentsMargins(0, 0, 0, 0)
+        self.product_grid.setSpacing(12)
+
         scroll.setWidget(container)
         self.center_content.addWidget(scroll)
+        
     def load_products(self):
         self.clear_center_content()
-        # === PRODUCT GRID ===
         self.product_grid = QGridLayout()
         all_products = self.db_manager.fetch_all_products()
 
-        for idx, name in enumerate(all_products):
-            btn = QPushButton(name)
-            btn.setFixedSize(150, 60)  # consistent size
-            btn.setStyleSheet("""
-                QPushButton {
-                    font-size: 14px;
-                    padding: 8px;
-                    background-color: #f0f0f0;
-                    border: 1px solid #ccc;
-                    border-radius: 6px;
-                }
-                QPushButton:hover {
-                    background-color: #e0e0e0;
-                }
-            """)
-            
-            # connect to future slot if needed
-            # btn.clicked.connect(lambda checked, n=name: self.handle_product_click(n))
-
-            self.product_grid.addWidget(btn, idx // 4, idx % 4)
-
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        container = QWidget()
-        container.setLayout(self.product_grid)
-        scroll.setWidget(container)
-        self.center_content.addWidget(scroll)
-    def load_products_with_search(self):
-        
-        
-        self.sub_category.setEnabled(False)
-        self.sub_category.clear()
-        self.sub_category.addItem("Select Category")
-        search_term = self.search_box.text().strip()
-        self.clear_center_content()
-        all_products = self.db_manager.fetch_products_with_search(search_term)
-
-        self.product_grid = QGridLayout()
-
-        for idx, name in enumerate(all_products):
-            btn = QPushButton(name)
+        for idx, (name, price) in enumerate(all_products):
+            btn = QPushButton(f"{name}     ₱{price}")
             btn.setFixedSize(150, 60)
             btn.setStyleSheet("""
                 QPushButton {
@@ -383,32 +388,47 @@ class POSHomePage(QWidget):
                     background-color: #f0f0f0;
                     border: 1px solid #ccc;
                     border-radius: 6px;
+                    text-align: left;
                 }
                 QPushButton:hover {
                     background-color: #e0e0e0;
                 }
             """)
             self.product_grid.addWidget(btn, idx // 4, idx % 4)
+            btn.clicked.connect(lambda checked, n=name, p=price: print(f"Product clicked: {n} - ₱{p}"))
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setStyleSheet("QScrollArea { border: none; background-color: transparent; }")
+        scroll.viewport().setStyleSheet("background-color: transparent; border: none;")
+        scroll.setContentsMargins(0, 0, 0, 0)
+
         container = QWidget()
         container.setLayout(self.product_grid)
+        container.setStyleSheet("background-color: transparent; border: none;")
+        container.setContentsMargins(0, 0, 0, 0)
+
+        self.product_grid.setContentsMargins(0, 0, 0, 0)
+        self.product_grid.setSpacing(12)
+
         scroll.setWidget(container)
-
         self.center_content.addWidget(scroll)
-    def load_products_with_filters(self):
         
+    def load_products_with_search(self):
+        
+        
+        self.sub_category.setEnabled(False)
+        self.sub_category.clear()
+        self.sub_category.addItem("Select Category")
+        search_term = self.search_box.text().strip()
         self.clear_center_content()
-        self.category_picked
-        # === PRODUCT GRID ===
         self.product_grid = QGridLayout()
-        self.load_subcategories(self.category_picked)
-        all_products = self.db_manager.fetch_all_products_with_filter(self.category_picked)
+        all_products = self.db_manager.fetch_products_with_search(search_term)
 
-        for idx, name in enumerate(all_products):
-            btn = QPushButton(name)
-            btn.setFixedSize(150, 60)  # consistent size
+        for idx, (name, price) in enumerate(all_products):
+            btn = QPushButton(f"{name}     ₱{price}")
+            btn.setFixedSize(150, 60)
             btn.setStyleSheet("""
                 QPushButton {
                     font-size: 14px;
@@ -416,23 +436,76 @@ class POSHomePage(QWidget):
                     background-color: #f0f0f0;
                     border: 1px solid #ccc;
                     border-radius: 6px;
+                    text-align: left;
                 }
                 QPushButton:hover {
                     background-color: #e0e0e0;
                 }
             """)
-            
-            # connect to future slot if needed
-            # btn.clicked.connect(lambda checked, n=name: self.handle_product_click(n))
-
             self.product_grid.addWidget(btn, idx // 4, idx % 4)
+            btn.clicked.connect(lambda checked, n=name, p=price: print(f"Product clicked: {n} - ₱{p}"))
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setStyleSheet("QScrollArea { border: none; background-color: transparent; }")
+        scroll.viewport().setStyleSheet("background-color: transparent; border: none;")
+        scroll.setContentsMargins(0, 0, 0, 0)
+
         container = QWidget()
         container.setLayout(self.product_grid)
+        container.setStyleSheet("background-color: transparent; border: none;")
+        container.setContentsMargins(0, 0, 0, 0)
+
+        self.product_grid.setContentsMargins(0, 0, 0, 0)
+        self.product_grid.setSpacing(12)
+
         scroll.setWidget(container)
         self.center_content.addWidget(scroll)
+        
+    def load_products_with_filters(self):
+        self.clear_center_content()
+        self.product_grid = QGridLayout()
+        self.load_subcategories(self.category_picked)
+        all_products = self.db_manager.fetch_all_products_with_filter(self.category_picked)
+
+        for idx, (name, price) in enumerate(all_products):
+            btn = QPushButton(f"{name}     ₱{price}")
+            btn.setFixedSize(150, 60)
+            btn.setStyleSheet("""
+                QPushButton {
+                    font-size: 14px;
+                    padding: 8px;
+                    background-color: #f0f0f0;
+                    border: 1px solid #ccc;
+                    border-radius: 6px;
+                    text-align: left;
+                }
+                QPushButton:hover {
+                    background-color: #e0e0e0;
+                }
+            """)
+            self.product_grid.addWidget(btn, idx // 4, idx % 4)
+            btn.clicked.connect(lambda checked, n=name, p=price: print(f"Product clicked: {n} - ₱{p}"))
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setStyleSheet("QScrollArea { border: none; background-color: transparent; }")
+        scroll.viewport().setStyleSheet("background-color: transparent; border: none;")
+        scroll.setContentsMargins(0, 0, 0, 0)
+
+        container = QWidget()
+        container.setLayout(self.product_grid)
+        container.setStyleSheet("background-color: transparent; border: none;")
+        container.setContentsMargins(0, 0, 0, 0)
+
+        self.product_grid.setContentsMargins(0, 0, 0, 0)
+        self.product_grid.setSpacing(12)
+
+        scroll.setWidget(container)
+        self.center_content.addWidget(scroll)
+
     def handle_category_click(self, category_name):
         self.sub_category.setEnabled(True)
         print(f"Filtering products by category: {category_name}")
@@ -464,5 +537,10 @@ class POSHomePage(QWidget):
         self.sub_category.addItems(subcategories)
         self.sub_category.setCurrentIndex(0)
         self.subcattopass = "All"
+    def show_management(self):
+        self.management_next = ManagementPage(self.username, self.rank)
+        self.management_next.show()
+        self.hide()
+
 
 

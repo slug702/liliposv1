@@ -87,17 +87,8 @@ class DatabaseManager:
     def fetch_all_products(self):
         try:
             with self.connection.cursor() as cursor:
-                cursor.execute("SELECT `product_desc` FROM products")
-                return [row['product_desc'] for row in cursor.fetchall()]
-        except pymysql.MySQLError as e:
-            print(f"Error fetching products: {e}")
-            return []
-    def fetch_all_products_with_filter(self, category_picked):
-        try:
-            with self.connection.cursor() as cursor:
-                query = "SELECT `product_desc` FROM products WHERE category_name = %s"
-                cursor.execute(query, (category_picked,))
-                return [row['product_desc'] for row in cursor.fetchall()]
+                cursor.execute("SELECT `product_desc`, `price` FROM products")
+                return [(row['product_desc'], row['price']) for row in cursor.fetchall()]
         except pymysql.MySQLError as e:
             print(f"Error fetching products: {e}")
             return []
@@ -113,31 +104,42 @@ class DatabaseManager:
         except pymysql.MySQLError as e:
             print(f"Error fetching subcategories: {e}")
             return []
+    def fetch_all_products_with_filter(self, category_picked):
+        try:
+            with self.connection.cursor() as cursor:
+                query = "SELECT `product_desc`, `price` FROM products WHERE category_name = %s"
+                cursor.execute(query, (category_picked,))
+                return [(row['product_desc'], row['price']) for row in cursor.fetchall()]
+        except pymysql.MySQLError as e:
+            print(f"Error fetching products: {e}")
+            return []
+
     def fetch_products_by_category_and_sub(self, category_picked, subcat):
         try:
             with self.connection.cursor() as cursor:
                 if subcat == "All":
-                    query = "SELECT product_desc FROM products WHERE category_name = %s"
+                    query = "SELECT product_desc, price FROM products WHERE category_name = %s"
                     cursor.execute(query, (category_picked,))
                 else:
-                    query = "SELECT product_desc FROM products WHERE category_name = %s AND sub_category = %s"
+                    query = "SELECT product_desc, price FROM products WHERE category_name = %s AND sub_category = %s"
                     cursor.execute(query, (category_picked, subcat))
-                return [row['product_desc'] for row in cursor.fetchall()]
+                return [(row['product_desc'], row['price']) for row in cursor.fetchall()]
         except pymysql.MySQLError as e:
             print(f"Error fetching products: {e}")
             return []
+
     
     def fetch_products_with_search(self, searchedfor):
         try:
             with self.connection.cursor() as cursor:
                 query = """
-                    SELECT product_desc
+                    SELECT product_desc, price
                     FROM products
                     WHERE product_desc LIKE %s
                 """
-                search_term = f"%{searchedfor}%"  # for partial match
+                search_term = f"%{searchedfor}%"
                 cursor.execute(query, (search_term,))
-                return [row['product_desc'] for row in cursor.fetchall()]
+                return [(row['product_desc'], row['price']) for row in cursor.fetchall()]
         except pymysql.MySQLError as e:
             print(f"Error searching products: {e}")
             return []
