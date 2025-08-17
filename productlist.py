@@ -1,21 +1,22 @@
 from PySide6.QtWidgets import QWidget, QPushButton, QVBoxLayout, QLabel, QHBoxLayout, QApplication, QTableWidget, QSizePolicy, QHeaderView, QTableView, QTableWidgetItem
-
+from databaseutils import DatabaseManager
 from datetime import date
 
-class ManagementPage(QWidget):
+class ProductPage(QWidget):
     def __init__(self, username, rank, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Management Page - Lili Systems")
+        self.setWindowTitle("Product List - Lili Systems")
         self.username = username
         self.rank = rank
         self.showMaximized()
         #self.center_window()
         # Header
-        self.header = QLabel(f"Today's Order List")
+        self.header = QLabel(f"Product List")
         self.header.setStyleSheet("font-size: 24px; font-weight: bold; margin-bottom: 20px; font-family: 'Segoe UI', sans-serif")
         self.date_today = date.today()
-    
         
+        
+        self.db_manager = DatabaseManager()
 
       
         # Main area (will swap out widgets here)
@@ -26,14 +27,14 @@ class ManagementPage(QWidget):
         header_layout = QHBoxLayout(self)
         # === ORDER SUMMARY CART ===
         table_layout = QHBoxLayout(self)
-        self.order_table = QTableWidget(5, 5)
-        self.order_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        self.order_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.order_table.setHorizontalHeaderLabels(["Order Number", "Paid", "Mode of Payment", "User", "Order Type"])
-        self.order_table.verticalHeader().setVisible(False)
-        self.order_table.setSelectionBehavior(QTableView.SelectRows)
-        self.order_table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.order_table.setStyleSheet("""
+        self.product_table = QTableWidget(7, 7)
+        self.product_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.product_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.product_table.setHorizontalHeaderLabels(["Product ID", "Product", "Price", "Size", "Category", "Sub-Category", "Size Group"])
+        self.product_table.verticalHeader().setVisible(False)
+        self.product_table.setSelectionBehavior(QTableView.SelectRows)
+        self.product_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.product_table.setStyleSheet("""
             QTableWidget {
                 background-color: #FFFFFF;
                 border: 2px solid #D1D5DB;  /* Light border */
@@ -111,13 +112,10 @@ class ManagementPage(QWidget):
         """
 
 
-        order_data = [["1", "1250", "Card", "Cashier 1", "Table 1"], ["2", "1000", "Cash", "Cashier 3", "Takeout"], ["3", "500", "GCash", "Cashier 4","Table 4"]]
-        for i, row in enumerate(order_data):
-            for j, val in enumerate(row):
-                self.order_table.setItem(i, j, QTableWidgetItem(val))
-        self.header_label = QLabel("Management Page")
+        self.load_products_into_table()
+        self.header_label = QLabel("Product List")
         self.header_label.setStyleSheet("font-size: 24px; font-weight: bold; font-family: 'Segoe UI'; margin-bottom: 10px")
-        self.header_label2 = QLabel(f"Orders Placed as of {self.date_today}")
+        self.header_label2 = QLabel(f"TBD")
         self.header_label2.setStyleSheet("font-size: 24px; font-weight: bold; font-family: 'Segoe UI'; margin-bottom: 10px")
         header_layout.addWidget(self.header_label)
         header_layout.addWidget(self.header_label2)
@@ -127,35 +125,63 @@ class ManagementPage(QWidget):
         nav_layout = QVBoxLayout()
         table_layout.addLayout(nav_layout)
         
+        
+        self.gomanage = QPushButton ("Go Back to Management")
+        self.gomanage.clicked.connect(self.gobacktomanagement)
         self.gohome = QPushButton ("Go Back to Orders")
         self.gohome.clicked.connect(self.gobacktohome)
-        self.deleteinv = QPushButton ("Delete Invoice")
-        self.gotoproducts= QPushButton ("Product List")
-        self.gotoproducts.clicked.connect(self.gotoproductlist)
-        self.gotocombos = QPushButton ("Combo List - TBD")
-        
+        self.createprod = QPushButton ("Create New Product")
+        self.createprod.clicked.connect(self.create_newproduct)
+        self.deleteprod= QPushButton ("Delete Product")
+        self.editprod = QPushButton ("Edit Product")
+        nav_layout.addWidget(self.gomanage)
         nav_layout.addWidget(self.gohome)
-        nav_layout.addWidget(self.deleteinv)
-        nav_layout.addWidget(self.gotoproducts)
-        nav_layout.addWidget(self.gotocombos)
+        nav_layout.addWidget(self.createprod)
+        nav_layout.addWidget(self.deleteprod)
+        nav_layout.addWidget(self.editprod)
         
         
         #main_layout.addLayout(nav_layout)
-        table_layout.addWidget(self.order_table)
-        for btn in [self.gohome, self.deleteinv, self.gotoproducts, self.gotocombos]:
+        table_layout.addWidget(self.product_table)
+        for btn in [self.gohome, self.gomanage, self.createprod, self.deleteprod, self.editprod]:
             btn.setMinimumHeight(40)
-            btn.setStyleSheet(self.button_style)    
-    def gotoproductlist(self):
-        from productlist import ProductPage
-        self.next_screenproducts = ProductPage(self.username, self.rank)
-        self.next_screenproducts.show()
+            btn.setStyleSheet(self.button_style)
+    def load_products_into_table(self):
+        rows = self.db_manager.fetch_product_list()
+        product_data = [
+            [
+                r.get("pid", ""),
+                r.get("product_desc", ""),
+                f"{float(r['price']):.2f}" if r.get("price") is not None else "",
+                r.get("size") or "",
+                r.get("category_name") or "",
+                r.get("sub_category") or "",
+                r.get("size_group") or "",
+            ]
+            for r in rows
+        ]
+        # Paint the table
+        self.product_table.setRowCount(len(product_data))
+        for i, row in enumerate(product_data):
+            for j, val in enumerate(row):
+                item = QTableWidgetItem(str(val))
+                #item.setFlags(item.flags() & ~Qt.ItemIsEditable)
+                self.product_table.setItem(i, j, item)
+    def gobacktomanagement(self):
+        from managementpage import ManagementPage
+        self.next_screenacc = ManagementPage(self.username, self.rank)
+        self.next_screenacc.show()
         self.hide()
+    def create_newproduct(self):
+        from createnewproducts import CreateProducts
+        self.nextcreate_products = CreateProducts(self.username, self.rank)
+        self.nextcreate_products.show()
+        self.hide()                                                
     def gobacktohome(self):
         from saleslandingpage import POSHomePage
         self.next_screenacc = POSHomePage(self.username, self.rank)
         self.next_screenacc.show()
         self.hide()
-
     # Example methods to show how you’d swap widgets
     def center_window(self):
         frame_geometry = self.frameGeometry()

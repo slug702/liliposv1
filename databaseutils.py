@@ -76,14 +76,27 @@ class DatabaseManager:
         except pymysql.MySQLError as e:
             print(f"Error: {e}")
             return None
-    def fetch_categories_for_orders(self):#get districts for main window
+    def fetch_categories_for_orders(self):
+        sql = """
+            SELECT DISTINCT TRIM(category_name) AS cat
+            FROM products
+            WHERE category_name IS NOT NULL AND TRIM(category_name) <> ''
+            ORDER BY cat
+        """
         try:
-            with self.connection.cursor() as cursor:
-                cursor.execute("SELECT category_name FROM categories")
-                return [row['category_name'] for row in cursor.fetchall()]
+            with self.connection.cursor() as cur:   # DictCursor is set globally in your connect
+                cur.execute(sql)
+                rows = cur.fetchall()               # list of dicts like [{'cat': 'Mains'}, ...]
+                
+                # Build the category list
+                categories = [r["cat"] for r in rows]
+                
+                # Always prepend "All"
+                return ["All"] + categories
+
         except pymysql.MySQLError as e:
             print(f"Error fetching categories: {e}")
-            return []
+            return ["All"]   # fallback so UI doesn’t break
     def fetch_all_products(self):
         try:
             with self.connection.cursor() as cursor:
@@ -143,3 +156,50 @@ class DatabaseManager:
         except pymysql.MySQLError as e:
             print(f"Error searching products: {e}")
             return []
+    def fetch_product_list(self):
+       
+        sql = """
+            SELECT
+                pid,
+                product_desc,
+                price,
+                category_name,
+                sub_category,
+                size,
+                size_group
+            FROM products
+            ORDER BY product_desc
+        """
+        try:
+            with self.connection.cursor(pymysql.cursors.DictCursor) as cur:
+                cur.execute(sql)
+                return cur.fetchall()
+        except pymysql.MySQLError as e:
+            print(f"Error fetching products: {e}")
+            return []
+    def insert_product(self, product_desc, price, category_name, sub_category,
+                   size="No Size", size_group="No Size"):
+        
+        try:
+            with self.connection.cursor() as cur:
+                sql = """
+                    INSERT INTO products
+                        (product_desc, price, category_name, sub_category, size, size_group)
+                    VALUES
+                        (%s, %s, %s, %s, %s, %s)
+                """
+                cur.execute(sql, (
+                    product_desc,
+                    price,
+                    (category_name or None),
+                    (sub_category or None),
+                    size,
+                    size_group,
+                ))
+                new_id = cur.lastrowid
+            self.connection.commit()
+            return new_id
+        except pymysql.MySQLError as e:
+            print(f"insert_product error: {e}")
+            self.connection.rollback()
+            return None

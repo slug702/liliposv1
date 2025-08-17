@@ -10,7 +10,7 @@ from managementpage import ManagementPage
 class POSHomePage(QWidget):
     def __init__(self, username, rank, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Orders - Lili's Systems")
+        self.setWindowTitle("Orders - Lili Systems")
         self.username = username
         self.rank = rank
         self.showMaximized()
@@ -245,26 +245,25 @@ class POSHomePage(QWidget):
 
         # === LEFT NAVIGATION (TOP & BOTTOM) ===
         
-        self.gotoorders = QPushButton ("Orders")
-        self.gotoinventory = QPushButton ("Inventory")
-        self.gotosettings = QPushButton ("Setting")
-        self.gotoreports = QPushButton ("Report")
+        
+        self.gotoinventory = QPushButton ("Inventory - TBD")
+        self.gotosettings = QPushButton ("Settings")
         self.gotomanagement = QPushButton ("Management")
-
-        self.viewtables = QPushButton("View/Select Tables")
+        self.viewtables = QPushButton("View/Select Tables - TBD")
         self.createorder = QPushButton("Create Order")
         
         #self.addorderbtn = QPushButton("Add Product")
         self.removebtn = QPushButton("Remove")
         self.removebtn.setStyleSheet(self.button_style)
-        self.combobtn = QPushButton("Create Combo Meal")
+        self.combobtn = QPushButton("Create Combo Meal - TBD")
         btn.setStyleSheet(self.button_style)
         nav_layout = QVBoxLayout()
-        nav_layout.addWidget(self.gotoorders)
+       
         nav_layout.addWidget(self.gotoinventory)
-        nav_layout.addWidget(self.gotosettings)
-        nav_layout.addWidget(self.gotoreports)
+        
+       
         nav_layout.addWidget(self.gotomanagement)
+        nav_layout.addWidget(self.gotosettings)
         self.gotomanagement.clicked.connect(self.show_management)
             
         nav_layout.addStretch()
@@ -274,7 +273,7 @@ class POSHomePage(QWidget):
         #nav_layout.addWidget(self.addorderbtn, alignment=Qt.AlignLeft)
         nav_layout.addWidget(self.removebtn, alignment=Qt.AlignLeft)
         nav_layout.addWidget(self.combobtn, alignment=Qt.AlignLeft)
-        for btn in [self.gotoorders, self.gotoinventory, self.gotosettings, self.gotoreports, self.gotomanagement, self.combobtn, self.createorder, self.viewtables]:
+        for btn in [self.gotoinventory, self.gotosettings, self.gotomanagement, self.combobtn, self.createorder, self.viewtables]:
             btn.setMinimumHeight(40)
             btn.setStyleSheet(self.button_style)    
         
