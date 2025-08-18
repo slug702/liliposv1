@@ -203,3 +203,37 @@ class DatabaseManager:
             print(f"insert_product error: {e}")
             self.connection.rollback()
             return None
+    def delete_product(self, pid: int) -> bool:
+        """Delete one product by pid. Returns True if a row was deleted."""
+        try:
+            with self.connection.cursor() as cur:
+                cur.execute("DELETE FROM products WHERE pid = %s", (pid,))
+            self.connection.commit()
+            return cur.rowcount > 0
+        except pymysql.MySQLError as e:
+            print(f"delete_product error: {e}")
+            self.connection.rollback()
+            return False
+    def update_product(self, pid, product_desc, price, category_name, sub_category, size, size_group):
+       
+        sql = """
+            UPDATE products
+            SET product_desc = %s,
+                price        = %s,
+                category_name= %s,
+                sub_category = %s,
+                size         = %s,
+                size_group   = %s
+            WHERE pid = %s
+            LIMIT 1
+        """
+        try:
+            with self.connection.cursor() as cur:
+                cur.execute(sql, (
+                    product_desc, price, category_name, sub_category, size, size_group, pid
+                ))
+            self.connection.commit()
+            return cur.rowcount == 1
+        except Exception as e:
+            print(f"update_product error: {e}")
+            return False
