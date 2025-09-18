@@ -6,6 +6,7 @@ from PySide6.QtGui import QPixmap
 from PySide6.QtCore import Qt
 from databaseutils import DatabaseManager
 from managementpage import ManagementPage
+from decimal import Decimal
 
 class POSHomePage(QWidget):
     def __init__(self, username, rank, parent=None):
@@ -141,10 +142,10 @@ class POSHomePage(QWidget):
         filters_layout.addWidget(self.search_btn)
         self.search_btn.clicked.connect(self.load_products_with_search)
         # === ORDER SUMMARY CART ===
-        self.order_table = QTableWidget(5, 3)
+        self.order_table = QTableWidget(0, 4)
         self.order_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.order_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.order_table.setHorizontalHeaderLabels(["quantity", "product", "price"])
+        self.order_table.setHorizontalHeaderLabels(["id", "product", "price", "discount"])
         self.order_table.verticalHeader().setVisible(False)
         self.order_table.setSelectionBehavior(QTableView.SelectRows)
         self.order_table.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -204,26 +205,29 @@ class POSHomePage(QWidget):
 
 
 
-        order_data = [["3", "meal3", "3"], ["3", "fried chicken", "3"], ["3", "burger", "3"]]
-        for i, row in enumerate(order_data):
-            for j, val in enumerate(row):
-                self.order_table.setItem(i, j, QTableWidgetItem(val))
-
-        self.total_label = QLabel("total:")
-        self.total_label.setStyleSheet("""
+        #goback here
+        self.label_stylesheet = ("""
             font-size: 20px;
             font-weight: 600;
             font-family: 'Segoe UI', sans-serif;
             color: #111827;
         """)
-
+        self.vatable_label = QLabel("VATable Sales:")
+        self.vatable_label.setStyleSheet(self.label_stylesheet)
+        self.discounts_label = QLabel("Total Discount: ")
+        self.discounts_label.setStyleSheet(self.label_stylesheet)
+        self.vat_label = QLabel("VAT Total: ")
+        self.vat_label.setStyleSheet(self.label_stylesheet)
+        self.total_label = QLabel("Amount Payable:")
+        self.total_label.setStyleSheet(self.label_stylesheet)
+        
         self.btn_discount = QPushButton("add discount")
-        self.btn_place = QPushButton("place order")
+        self.btn_place = QPushButton("pay order")
         for btn in [self.btn_discount, self.btn_place]:
             btn.setStyleSheet(self.button_style)
         self.ordernumber = QComboBox()
-        dummy_ordernum = ("Select Order", "1", "2")
-        self.ordernumber.addItems(dummy_ordernum)
+        self.reload_unpaid_invoices()
+        
         self.ordernumber.setStyleSheet(self.combobox_style)
         ordnum = self.ordernumber.currentText()
         self.ordernumber.currentIndexChanged.connect(self.update_header)
@@ -239,6 +243,9 @@ class POSHomePage(QWidget):
         order_layout.addWidget(self.order_table)  # no alignment flag
         order_layout.addStretch()  # pushes the rest to the bottom
 
+        order_layout.addWidget(self.vatable_label)
+        order_layout.addWidget(self.discounts_label)
+        order_layout.addWidget(self.vat_label)
         order_layout.addWidget(self.total_label)
         order_layout.addWidget(self.btn_discount)
         order_layout.addWidget(self.btn_place)
@@ -251,10 +258,12 @@ class POSHomePage(QWidget):
         self.gotomanagement = QPushButton ("Management")
         self.viewtables = QPushButton("View/Select Tables - TBD")
         self.createorder = QPushButton("Create Order")
+        self.createorder.clicked.connect(self.insert_new_invoice) #goback
         
         #self.addorderbtn = QPushButton("Add Product")
         self.removebtn = QPushButton("Remove")
         self.removebtn.setStyleSheet(self.button_style)
+        self.removebtn.clicked.connect(self.remove_selected_transaction)
         self.combobtn = QPushButton("Create Combo Meal - TBD")
         btn.setStyleSheet(self.button_style)
         nav_layout = QVBoxLayout()
@@ -300,7 +309,70 @@ class POSHomePage(QWidget):
         self.setLayout(main_layout)
 
     # === Placeholder: Load categories dynamically ===
+    def reciept_calculations():
+        return
+
+    def remove_selected_transaction(self):
+        row = self.order_table.currentRow()
+        if row < 0:
+            print("Select a line to remove.")
+            return
+        item = self.order_table.item(row, 0)  # tr_id column
+        if not item:
+            return
+        tr_id_txt = item.text().strip()
+        if not tr_id_txt.isdigit():
+            print("Invalid tr_id.")
+            return
+
+        ok = self.db_manager.delete_transaction(int(tr_id_txt))
+        if ok:
+            self.reload_order_table()
+        else:
+            print("Delete failed.")
+
+    def reload_order_table(self):
+        inv_id = self.ordernumber.currentText().strip()
+        self.order_table.setRowCount(0)
+        if not inv_id.isdigit():
+            return
+
+        rows = self.db_manager.fetch_transactions_for_invoice(int(inv_id))
+        for r in rows:
+            i = self.order_table.rowCount()
+            self.order_table.insertRow(i)
+            self.order_table.setItem(i, 0, QTableWidgetItem(str(r.get("tr_id") or "")))
+            self.order_table.setItem(i, 1, QTableWidgetItem(str(r.get("tr_desc") or "")))
+            self.order_table.setItem(i, 2, QTableWidgetItem("" if r.get("gross_price") is None else str(r["gross_price"])))
+            self.order_table.setItem(i, 3, QTableWidgetItem("" if r.get("discount_rate") is None else str(r["discount_rate"])))
+
+
+    def insert_new_invoice(self):
+        new_id = self.db_manager.insert_invoice_new()
+        if new_id:
+            # refresh the combo and select the new invoice
+            self.reload_unpaid_invoices()
+            self.ordernumber.setCurrentText(str(new_id))
+            self.update_header()
+        else:
+            print("Failed to create invoice.")
+        #insert new invoice here, put "new" in the status column. nothing else for the rest
+        return
+    def reload_unpaid_invoices(self):
+  
+        self.ordernumber.clear()
+
+        try:
+            inv_ids = self.db_manager.fetch_unpaid_invoice_ids()  # from DatabaseManager
+            if inv_ids:
+                self.ordernumber.addItems(inv_ids)
+        except Exception as e:
+            print(f"Could not load unpaid invoices: {e}")
+
+    
+    
     def update_header(self):
+        self.reload_order_table()
         selected_order = self.ordernumber.currentText()
         self.header2.setText(f"Order Number: {selected_order}")
     def load_categories(self):
@@ -376,8 +448,10 @@ class POSHomePage(QWidget):
         self.clear_center_content()
         self.product_grid = QGridLayout()
         all_products = self.db_manager.fetch_all_products()
+        for idx, row in enumerate(all_products):
+            name = row['product_desc']
+            price = row['price']
 
-        for idx, (name, price) in enumerate(all_products):
             btn = QPushButton(f"{name}     ₱{price}")
             btn.setFixedSize(150, 60)
             btn.setStyleSheet("""
@@ -389,12 +463,14 @@ class POSHomePage(QWidget):
                     border-radius: 6px;
                     text-align: left;
                 }
-                QPushButton:hover {
-                    background-color: #e0e0e0;
-                }
+                QPushButton:hover { background-color: #e0e0e0; }
             """)
+
             self.product_grid.addWidget(btn, idx // 4, idx % 4)
-            btn.clicked.connect(lambda checked, n=name, p=price: print(f"Product clicked: {n} - ₱{p}"))
+
+            # capture the row for this button and insert on click
+            btn.clicked.connect(lambda _=False, prod=row: self.add_item_to_current_invoice(prod))
+
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -413,6 +489,25 @@ class POSHomePage(QWidget):
 
         scroll.setWidget(container)
         self.center_content.addWidget(scroll)
+    def add_item_to_current_invoice(self, prod):
+        inv_id = self.ordernumber.currentText().strip()
+        if not inv_id or not inv_id.isdigit():
+            print("Select an order number first.")
+            return
+
+        ok = self.db_manager.insert_transaction_item(
+            inv_id=int(inv_id),
+            pid=prod['pid'],
+            desc=prod['product_desc'],
+            price=prod['price'],
+            vat=prod['vat'],       # your products.vat (e.g., 'yes'/'no' or 0/1)
+        )
+        if ok:
+            print(f"Added {prod['product_desc']} (₱{prod['price']}) to invoice {inv_id}")
+            self.reload_order_table()
+        else:
+            print("Failed to add item.")
+
         
     def load_products_with_search(self):
         

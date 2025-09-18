@@ -7,7 +7,7 @@ from PySide6.QtWidgets import (QMainWindow, QToolBar, QPushButton, QStatusBar, Q
 from datetime import datetime
 from databaseutils import DatabaseManager
 from saleslandingpage import POSHomePage
-
+from decimal import Decimal
 
 class MainLoginWindow(QWidget):
     

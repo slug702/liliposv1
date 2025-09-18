@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import QWidget, QPushButton, QVBoxLayout, QLabel, QHBoxLayout, QApplication, QTableWidget, QSizePolicy, QHeaderView, QTableView, QTableWidgetItem, QLineEdit, QComboBox, QCheckBox
 from databaseutils import DatabaseManager
 from datetime import date
+from decimal import Decimal
 
 class CreateProducts(QWidget):
     
@@ -145,6 +146,7 @@ class CreateProducts(QWidget):
         self.gohome = QPushButton ("Go Back to Orders")
         self.gohome.clicked.connect(self.gobacktohome)
         self.add_sizeoption = QCheckBox("Check to Add Sizes - TBD")
+        self.add_vat = QCheckBox("VAT enabled")
         self.checkbox_style = """
                 QCheckBox {
                     font-size: 13px;
@@ -244,6 +246,8 @@ class CreateProducts(QWidget):
         category_layout.addWidget(self.create_sub_cat)
         
         bottom_layout.addWidget(self.add_sizeoption)
+        bottom_layout.addWidget(self.add_vat)
+        
         bottom_layout.addWidget(self.price_box)
         bottom_layout.addWidget(self.finalize_product)
         main_layout.addLayout(exit_layout)
@@ -252,7 +256,7 @@ class CreateProducts(QWidget):
         main_layout.addLayout(bottom_layout)
         self.create_main_cat.stateChanged.connect(self.toggle_editable_catbox)
         self.create_sub_cat.stateChanged.connect(self.toggle_editable_subcatbox)
-        for chkbox in [self.add_sizeoption, self.create_main_cat, self.create_sub_cat]:
+        for chkbox in [self.add_sizeoption, self.create_main_cat, self.create_sub_cat, self.add_vat]:
             chkbox.setMinimumHeight(40)
             chkbox.setStyleSheet(self.checkbox_style)
         
@@ -260,6 +264,7 @@ class CreateProducts(QWidget):
             btn.setMinimumHeight(40)
             btn.setStyleSheet(self.button_style)
         self.enter_new_category()
+    
     
     def toggle_editable_catbox(self, state):
 
@@ -344,11 +349,15 @@ class CreateProducts(QWidget):
     def insert_product(self):
         if self.add_sizeoption.isChecked():
             print("Go to other page - TBD for now")
-            return
+        if self.add_vat.isChecked():
+            self.vatv = "yes"
+        else: 
+            self.vatv = "no"
         pname = self.product_box.text().strip()
         catused  = self.main_category.currentText().strip()
         subused  = self.sub_category.currentText().strip()
         price_txt = self.price_box.text().strip()
+        
 
         # very light validation
         if not pname or not price_txt:
@@ -356,7 +365,7 @@ class CreateProducts(QWidget):
             return
 
         try:
-            price = float(price_txt)
+            price = Decimal(price_txt)
         except ValueError:
             print("Price must be a number.")
             return
@@ -366,8 +375,10 @@ class CreateProducts(QWidget):
             price=price,
             category_name=catused,
             sub_category=subused,
+            vat = self.vatv, 
             size="No Size",
             size_group="No Size",
+            
         )
 
         if new_id:

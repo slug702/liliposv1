@@ -1,4 +1,5 @@
 from PySide6.QtWidgets import QWidget, QPushButton, QVBoxLayout, QLabel, QHBoxLayout, QApplication
+from decimal import Decimal
 
 class POSHomePage(QWidget):
     def __init__(self, username, rank, parent=None):

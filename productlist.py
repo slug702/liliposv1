@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import QWidget, QPushButton, QVBoxLayout, QLabel, QHBoxLayout, QApplication, QTableWidget, QSizePolicy, QHeaderView, QTableView, QTableWidgetItem, QMessageBox
 from databaseutils import DatabaseManager
 from datetime import date
+from decimal import Decimal
 
 class ProductPage(QWidget):
     def __init__(self, username, rank, parent=None):
@@ -174,7 +175,7 @@ class ProductPage(QWidget):
             # Grab all columns in that row
             self.pidf        = int(self.product_table.item(row, 0).text())
             self.product_f   = self.product_table.item(row, 1).text()
-            self.price_f     = float(self.product_table.item(row, 2).text())
+            self.price_f     = Decimal(self.product_table.item(row, 2).text())
             self.size_f      = self.product_table.item(row, 3).text()
             self.category_f  = self.product_table.item(row, 4).text()
             self.sub_catf    = self.product_table.item(row, 5).text()
@@ -219,7 +220,7 @@ class ProductPage(QWidget):
             [
                 r.get("pid", ""),
                 r.get("product_desc", ""),
-                f"{float(r['price']):.2f}" if r.get("price") is not None else "",
+                f"{Decimal(r['price']):.2f}" if r.get("price") is not None else "",
                 r.get("size") or "",
                 r.get("category_name") or "",
                 r.get("sub_category") or "",

@@ -3,6 +3,7 @@ import os
 import subprocess
 import platform
 from datetime import datetime, timedelta, date
+from decimal import Decimal
 class DatabaseManager:
 
     def __init__(self):
@@ -54,6 +55,34 @@ class DatabaseManager:
         except pymysql.MySQLError as e:
             print(f"Error fetching usernames: {e}")
             return []
+    def fetch_unpaid_invoice_ids(self):
+        try:
+            with self.connection.cursor() as cur:
+                cur.execute("""
+                    SELECT inv_id
+                    FROM invoices
+                    WHERE status IN ('UNPAID','NEW')
+                    ORDER BY inv_id DESC
+                """)
+                rows = cur.fetchall()
+                return [str(r['inv_id']) for r in rows]
+        except pymysql.MySQLError as e:
+            print(f"Error fetching invoices: {e}")
+            return []
+    def insert_invoice_new(self):
+        """Create a blank invoice row with status NEW. Return the new inv_id."""
+        try:
+            with self.connection.cursor() as cur:
+                cur.execute(
+                    "INSERT INTO invoices (status, order_date) VALUES ('NEW', NOW())"
+                )
+                new_id = cur.lastrowid
+            self.connection.commit()
+            return new_id
+        except pymysql.MySQLError as e:
+            print(f"insert_invoice_new error: {e}")
+            self.connection.rollback()
+            return None
     def verify_credentials(self, username, password): #verify login 
         try:
             with self.connection.cursor() as cursor:
@@ -97,14 +126,67 @@ class DatabaseManager:
         except pymysql.MySQLError as e:
             print(f"Error fetching categories: {e}")
             return ["All"]   # fallback so UI doesn’t break
+    #def fetch_all_products(self):
+    #    try:
+    #        with self.connection.cursor() as cursor:
+    #            cursor.execute("SELECT `product_desc`, `price`, FROM products")
+    #            return [(row['product_desc'], row['price']) for row in cursor.fetchall()]
+    #    except pymysql.MySQLError as e:
+    #        print(f"Error fetching products: {e}")
+    #        return []
+    # return full product rows (dicts)
     def fetch_all_products(self):
         try:
             with self.connection.cursor() as cursor:
-                cursor.execute("SELECT `product_desc`, `price` FROM products")
-                return [(row['product_desc'], row['price']) for row in cursor.fetchall()]
+                cursor.execute("""
+                    SELECT pid, product_desc, price, size, size_group, vat
+                    FROM products
+                """)
+                return cursor.fetchall()   # list of dicts
         except pymysql.MySQLError as e:
             print(f"Error fetching products: {e}")
             return []
+    # simple insert of an item row into transactions
+    def insert_transaction_item(self, inv_id, pid, desc, price, vat):
+        try:
+            with self.connection.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO transactions
+                        (inv_id, p_id, tr_type, tr_desc, gross_price, vat, tr_date)
+                    VALUES
+                        (%s, %s, 'product', %s, %s, %s, NOW())
+                """, (inv_id, pid, desc, price, vat))
+            self.connection.commit()
+            return True
+        except pymysql.MySQLError as e:
+            print(f"insert_transaction_item error: {e}")
+            self.connection.rollback()
+            return False
+    def fetch_transactions_for_invoice(self, inv_id: int):
+        try:
+            with self.connection.cursor() as cur:
+                cur.execute("""
+                    SELECT tr_id, tr_desc, gross_price, discount_rate
+                    FROM transactions
+                    WHERE inv_id = %s
+                    ORDER BY tr_id
+                """, (inv_id,))
+                return cur.fetchall()
+        except pymysql.MySQLError as e:
+            print(f"Error fetching transactions: {e}")
+            return []
+    def delete_transaction(self, tr_id: int) -> bool:
+        try:
+            with self.connection.cursor() as cur:
+                cur.execute("DELETE FROM transactions WHERE tr_id = %s LIMIT 1", (tr_id,))
+            self.connection.commit()
+            return cur.rowcount == 1
+        except pymysql.MySQLError as e:
+            print(f"delete_transaction error: {e}")
+            self.connection.rollback()
+            return False    
+
+
     def fetch_subcategories_by_category(self, category_picked):
         try:
             with self.connection.cursor() as cursor:
@@ -177,22 +259,23 @@ class DatabaseManager:
         except pymysql.MySQLError as e:
             print(f"Error fetching products: {e}")
             return []
-    def insert_product(self, product_desc, price, category_name, sub_category,
+    def insert_product(self, product_desc, price, category_name, sub_category, vat,
                    size="No Size", size_group="No Size"):
         
         try:
             with self.connection.cursor() as cur:
                 sql = """
                     INSERT INTO products
-                        (product_desc, price, category_name, sub_category, size, size_group)
+                        (product_desc, price, category_name, sub_category, vat, size, size_group)
                     VALUES
-                        (%s, %s, %s, %s, %s, %s)
+                        (%s, %s, %s, %s, %s, %s, %s)
                 """
                 cur.execute(sql, (
                     product_desc,
                     price,
                     (category_name or None),
                     (sub_category or None),
+                    vat,
                     size,
                     size_group,
                 ))
@@ -214,7 +297,7 @@ class DatabaseManager:
             print(f"delete_product error: {e}")
             self.connection.rollback()
             return False
-    def update_product(self, pid, product_desc, price, category_name, sub_category, size, size_group):
+    def update_product(self, pid, product_desc, price, category_name, sub_category, vat, size, size_group):
        
         sql = """
             UPDATE products
@@ -222,6 +305,7 @@ class DatabaseManager:
                 price        = %s,
                 category_name= %s,
                 sub_category = %s,
+                vat = %s,
                 size         = %s,
                 size_group   = %s
             WHERE pid = %s
@@ -230,10 +314,11 @@ class DatabaseManager:
         try:
             with self.connection.cursor() as cur:
                 cur.execute(sql, (
-                    product_desc, price, category_name, sub_category, size, size_group, pid
+                    product_desc, price, category_name, sub_category, vat, size, size_group, pid
                 ))
             self.connection.commit()
             return cur.rowcount == 1
         except Exception as e:
             print(f"update_product error: {e}")
             return False
+    

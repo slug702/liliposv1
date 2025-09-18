@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import QWidget, QPushButton, QVBoxLayout, QLabel, QHBoxLayout, QApplication, QTableWidget, QSizePolicy, QHeaderView, QTableView, QTableWidgetItem
-
+from decimal import Decimal
 from datetime import date
 
 class ManagementPage(QWidget):
