@@ -1,10 +1,13 @@
 from PySide6.QtWidgets import QWidget, QPushButton, QVBoxLayout, QLabel, QHBoxLayout, QApplication, QTableWidget, QSizePolicy, QHeaderView, QTableView, QTableWidgetItem
 from decimal import Decimal
 from datetime import date
+from databaseutils import DatabaseManager
+
 
 class ManagementPage(QWidget):
     def __init__(self, username, rank, parent=None):
         super().__init__(parent)
+        self.db = DatabaseManager()
         self.setWindowTitle("Management Page - Lili Systems")
         self.username = username
         self.rank = rank
@@ -23,13 +26,19 @@ class ManagementPage(QWidget):
         #self.main_area.setStyleSheet("font-size: 20px; color: gray; margin-top: 40px; font-family: 'Segoe UI', sans-serif")
 
         main_layout = QVBoxLayout(self)
-        header_layout = QHBoxLayout(self)
+        header_layout = QHBoxLayout()  
         # === ORDER SUMMARY CART ===
-        table_layout = QHBoxLayout(self)
-        self.order_table = QTableWidget(5, 5)
+        table_layout  = QHBoxLayout() 
+        self.order_table = QTableWidget(0, 4)
+        self.order_table.setHorizontalHeaderLabels(
+            ["Receipt Number", "Amount to Pay", "Order Type", "Status"]
+        )
+
+        # populate the table
+        self.load_invoices()
         self.order_table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.order_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.order_table.setHorizontalHeaderLabels(["Order Number", "Paid", "Mode of Payment", "User", "Order Type"])
+        
         self.order_table.verticalHeader().setVisible(False)
         self.order_table.setSelectionBehavior(QTableView.SelectRows)
         self.order_table.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -111,10 +120,8 @@ class ManagementPage(QWidget):
         """
 
 
-        order_data = [["1", "1250", "Card", "Cashier 1", "Table 1"], ["2", "1000", "Cash", "Cashier 3", "Takeout"], ["3", "500", "GCash", "Cashier 4","Table 4"]]
-        for i, row in enumerate(order_data):
-            for j, val in enumerate(row):
-                self.order_table.setItem(i, j, QTableWidgetItem(val))
+        self.load_invoices()
+    
         self.header_label = QLabel("Management Page")
         self.header_label.setStyleSheet("font-size: 24px; font-weight: bold; font-family: 'Segoe UI'; margin-bottom: 10px")
         self.header_label2 = QLabel(f"Orders Placed as of {self.date_today}")
@@ -130,6 +137,7 @@ class ManagementPage(QWidget):
         self.gohome = QPushButton ("Go Back to Orders")
         self.gohome.clicked.connect(self.gobacktohome)
         self.deleteinv = QPushButton ("Delete Invoice")
+        self.deleteinv.clicked.connect(self.delete_selected_invoice)
         self.gotoproducts= QPushButton ("Product List")
         self.gotoproducts.clicked.connect(self.gotoproductlist)
         self.gotocombos = QPushButton ("Combo List - TBD")
@@ -144,7 +152,42 @@ class ManagementPage(QWidget):
         table_layout.addWidget(self.order_table)
         for btn in [self.gohome, self.deleteinv, self.gotoproducts, self.gotocombos]:
             btn.setMinimumHeight(40)
-            btn.setStyleSheet(self.button_style)    
+            btn.setStyleSheet(self.button_style)   
+    def load_invoices(self):
+        """Populate the table with ALL invoices."""
+        rows = self.db.fetch_all_invoices() or []
+        self.order_table.clearContents()
+        self.order_table.setRowCount(len(rows))
+        # columns: Receipt Number | Amount to Pay | Order Type | Status
+        for i, r in enumerate(rows):
+            inv_id = str(r.get("inv_id", ""))
+            amount = (
+                f"{r.get('final_amount_to_pay', 0):.2f}"
+                if r.get("final_amount_to_pay") is not None else "0.00"
+            )
+            mop    = str(r.get("order_type", "") or "")
+            status = str(r.get("status", "") or "")
+
+            values = [inv_id, amount, mop, status]
+            for j, val in enumerate(values):
+                self.order_table.setItem(i, j, QTableWidgetItem(val))
+
+
+    def delete_selected_invoice(self):
+        """Delete the selected invoice and its transactions, then refresh."""
+        idxs = self.order_table.selectionModel().selectedRows()
+        if not idxs:
+            return
+        row = idxs[0].row()
+        inv_item = self.order_table.item(row, 0)
+        if not inv_item:
+            return
+        inv_id = inv_item.text().strip()
+        if not inv_id.isdigit():
+            return
+        if self.db.delete_invoice_and_transactions(int(inv_id)):
+            self.load_invoices()
+ 
     def gotoproductlist(self):
         from productlist import ProductPage
         self.next_screenproducts = ProductPage(self.username, self.rank)

@@ -147,21 +147,194 @@ class DatabaseManager:
             print(f"Error fetching products: {e}")
             return []
     # simple insert of an item row into transactions
-    def insert_transaction_item(self, inv_id, pid, desc, price, vat):
+    def fetch_transaction_by_id(self, tr_id: int):
+        with self.connection.cursor() as cur:
+            cur.execute("SELECT * FROM transactions WHERE tr_id = %s", (tr_id,))
+            row = cur.fetchone()
+            return row
+
+    def update_transaction_discount_line(self, tr_id, discount_rate, total_discount, net, vat_total, gross_price):
+        try:
+            with self.connection.cursor() as cur:
+                cur.execute("""
+                    UPDATE transactions
+                    SET discount_rate = %s,
+                        total_discount = %s,
+                        net = %s,
+                        vat_total = %s,
+                        gross_price = %s
+                    WHERE tr_id = %s
+                """, (discount_rate, total_discount, net, vat_total, gross_price, tr_id))
+            self.connection.commit()
+            return True
+        except Exception as e:
+            print("update_transaction_discount_line error:", e)
+            self.connection.rollback()
+            return False
+    # databaseutils.py
+
+    def fetch_transactions_for_invoice(self, inv_id: int):
+        try:
+            with self.connection.cursor() as cur:
+                cur.execute("""
+                    SELECT
+                        vat,            -- "yes" / "no"
+                        net,            -- net after any line-level discount
+                        total_discount  -- per-line discount amount (optional but useful)
+                    FROM transactions
+                    WHERE inv_id = %s
+                    AND tr_type = 'product'
+                    ORDER BY tr_id
+                """, (inv_id,))
+                return cur.fetchall()          # list of dicts
+        except pymysql.MySQLError as e:
+            print(f"Error fetching transactions: {e}")
+            return []
+    # databaseutils.py
+
+    def insert_payment_line(self, inv_id: int, mop: str, amount_paid: str):
+        """Record the amount the customer handed you."""
         try:
             with self.connection.cursor() as cur:
                 cur.execute("""
                     INSERT INTO transactions
-                        (inv_id, p_id, tr_type, tr_desc, gross_price, vat, tr_date)
+                        (inv_id, p_id, tr_type, tr_desc, vat,
+                        gross_price, net, vat_total, total_discount,
+                        rounding, discount_rate, mop, tr_date)
                     VALUES
-                        (%s, %s, 'product', %s, %s, %s, NOW())
-                """, (inv_id, pid, desc, price, vat))
+                        (%s, NULL, 'payment', CONCAT('Payment - ', %s), 'no',
+                        %s, %s, 0, 0, 0, 0, %s, NOW())
+                """, (inv_id, mop, amount_paid, amount_paid, mop))
+            self.connection.commit()
+            return True
+        except Exception as e:
+            print("insert_payment_line error:", e)
+            self.connection.rollback()
+            return False
+
+    def insert_change_line(self, inv_id: int, change_amount: str):
+        """Record the change returned to the customer as a negative line."""
+        try:
+            with self.connection.cursor() as cur:
+                cur.execute("""
+                    INSERT INTO transactions
+                        (inv_id, p_id, tr_type, tr_desc, vat,
+                        gross_price, net, vat_total, total_discount,
+                        rounding, discount_rate, mop, tr_date)
+                    VALUES
+                        (%s, NULL, 'change', 'Change Given', 'no',
+                        %s, %s, 0, 0, 0, 0, 'Cash', NOW())
+                """, (inv_id, f"-{change_amount}", f"-{change_amount}"))
+            self.connection.commit()
+            return True
+        except Exception as e:
+            print("insert_change_line error:", e)
+            self.connection.rollback()
+            return False
+
+
+    def update_invoice_totals(self, inv_id, vatable_total, nonvatable_total,
+                            total_vat, cart_discount, total_discount,
+                            final_amount_to_pay, status, mop):
+        try:
+            with self.connection.cursor() as cur:
+                cur.execute("""
+                    UPDATE invoices
+                    SET vatable_total=%s,
+                        nonvatable_total=%s,
+                        total_vat=%s,
+                        cart_discount=%s,
+                        total_discount=%s,
+                        final_amount_to_pay=%s,
+                        status=%s,
+                        order_type=%s
+                        
+                    WHERE inv_id=%s
+                """, (vatable_total, nonvatable_total, total_vat,
+                    cart_discount, total_discount, final_amount_to_pay, status,
+                    mop, inv_id))
+            self.connection.commit()
+            return True
+        except Exception as e:
+            print("update_invoice_totals error:", e)
+            self.connection.rollback()
+            return False
+    
+    def insert_transaction_item(
+        self, inv_id, pid, desc, vat, gross_price, net, vat_total,
+        total_discount, rounding, discount_rate
+    ):
+        try:
+            with self.connection.cursor() as cur:
+                cur.execute(
+                    """
+                    INSERT INTO transactions
+                        (inv_id, p_id, tr_type, tr_desc,
+                        vat, gross_price, net, vat_total,
+                        total_discount, rounding, discount_rate, tr_date)
+                    VALUES
+                        (%s, %s, 'product', %s,
+                        %s, %s, %s, %s,
+                        %s, %s, %s, NOW())
+                    """,
+                    (
+                        inv_id, pid, desc,
+                        vat, gross_price, net, vat_total,
+                        total_discount, rounding, discount_rate
+                    ),
+                )
             self.connection.commit()
             return True
         except pymysql.MySQLError as e:
             print(f"insert_transaction_item error: {e}")
             self.connection.rollback()
             return False
+    # databaseutils.py  (add this, do not remove your existing fetch used by the order table)
+    def fetch_all_invoices(self):
+        """Return ALL invoices for the management table."""
+        try:
+            with self.connection.cursor() as cur:
+                cur.execute("""
+                    SELECT inv_id, final_amount_to_pay, order_type, status, order_date
+                    FROM invoices
+                    ORDER BY inv_id DESC
+                """)
+                return cur.fetchall()
+        except Exception as e:
+            print("fetch_all_invoices error:", e)
+            return []
+
+    def delete_invoice_and_transactions(self, inv_id: int) -> bool:
+        """Delete an invoice and all its transactions."""
+        try:
+            with self.connection.cursor() as cur:
+                cur.execute("DELETE FROM transactions WHERE inv_id = %s", (inv_id,))
+                cur.execute("DELETE FROM invoices WHERE inv_id = %s LIMIT 1", (inv_id,))
+            self.connection.commit()
+            return True
+        except Exception as e:
+            print("delete_invoice_and_transactions error:", e)
+            self.connection.rollback()
+            return False
+
+    def fetch_invoice_lines_for_payment(self, inv_id: int):
+        try:
+            with self.connection.cursor() as cur:
+                cur.execute("""
+                    SELECT
+                        vat,            -- 'yes'/'no'
+                        net,            -- line net (after line-level discount)
+                        total_discount  -- line discount amount
+                    FROM transactions
+                    WHERE inv_id = %s
+                    AND tr_type = 'product'
+                    ORDER BY tr_id
+                """, (inv_id,))
+                return cur.fetchall()
+        except pymysql.MySQLError as e:
+            print(f"Error fetching invoice lines for payment: {e}")
+            return []
+
     def fetch_transactions_for_invoice(self, inv_id: int):
         try:
             with self.connection.cursor() as cur:

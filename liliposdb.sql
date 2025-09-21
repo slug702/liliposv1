@@ -28,10 +28,15 @@ CREATE TABLE `invoices` (
   `cashier` varchar(45) DEFAULT NULL,
   `order_type` varchar(45) DEFAULT NULL,
   `status` varchar(45) DEFAULT NULL,
-  `total_vat` decimal(10,2) DEFAULT NULL,
   `order_date` date DEFAULT NULL,
+  `total_vat` decimal(10,2) DEFAULT NULL,
+  `nonvatable_total` varchar(45) DEFAULT NULL,
+  `final_amount_to_pay` decimal(10,2) DEFAULT NULL,
+  `cart_discount` decimal(10,2) DEFAULT NULL,
+  `vatable_total` decimal(10,2) DEFAULT NULL,
+  `total_discount` decimal(10,2) DEFAULT NULL,
   PRIMARY KEY (`inv_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=31 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -40,7 +45,7 @@ CREATE TABLE `invoices` (
 
 LOCK TABLES `invoices` WRITE;
 /*!40000 ALTER TABLE `invoices` DISABLE KEYS */;
-INSERT INTO `invoices` VALUES (1,NULL,'Me','Takeaway','UNPAID',12.00,NULL),(2,NULL,NULL,NULL,'UNPAID',NULL,NULL),(3,NULL,NULL,NULL,'UNPAID',NULL,NULL),(4,NULL,NULL,NULL,'UNPAID',NULL,NULL),(5,NULL,NULL,NULL,'NEW',NULL,'2025-09-18'),(6,NULL,NULL,NULL,'NEW',NULL,'2025-09-18'),(7,NULL,NULL,NULL,'NEW',NULL,'2025-09-18'),(8,NULL,NULL,NULL,'NEW',NULL,'2025-09-19'),(9,NULL,NULL,NULL,'NEW',NULL,'2025-09-19'),(10,NULL,NULL,NULL,'NEW',NULL,'2025-09-19'),(11,NULL,NULL,NULL,'NEW',NULL,'2025-09-19'),(12,NULL,NULL,NULL,'NEW',NULL,'2025-09-19');
+INSERT INTO `invoices` VALUES (30,NULL,NULL,NULL,'NEW','2025-09-21',NULL,NULL,NULL,NULL,NULL,NULL);
 /*!40000 ALTER TABLE `invoices` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -62,7 +67,7 @@ CREATE TABLE `products` (
   `size_group` varchar(45) DEFAULT NULL,
   `vat` varchar(45) DEFAULT NULL,
   PRIMARY KEY (`pid`)
-) ENGINE=InnoDB AUTO_INCREMENT=38 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=45 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -71,7 +76,7 @@ CREATE TABLE `products` (
 
 LOCK TABLES `products` WRITE;
 /*!40000 ALTER TABLE `products` DISABLE KEYS */;
-INSERT INTO `products` VALUES (32,'Fries',150.00,'Potatoes','Fried',NULL,'No Size','No Size','yes'),(33,'Iced Tea',50.00,'Drinks','Tea',NULL,'No Size','No Size','yes'),(34,'Coke',35.50,'Drinks','Soda',NULL,'No Size','No Size','yes'),(35,'Cheeseburger',225.50,'Sandwich','Beef',NULL,'No Size','No Size','yes'),(36,'Beef Shawarma',250.00,'Wrap','Beef',NULL,'No Size','No Size','yes'),(37,'Burger-Steak',200.00,'Meal','Rice',NULL,'No Size','No Size','no');
+INSERT INTO `products` VALUES (32,'Fries',150.00,'Potatoes','Fried',NULL,'No Size','No Size','yes'),(33,'Iced Tea',50.00,'Drinks','Tea',NULL,'No Size','No Size','yes'),(34,'Coke',35.50,'Drinks','Soda',NULL,'No Size','No Size','yes'),(35,'Cheeseburger',225.50,'Sandwich','Beef',NULL,'No Size','No Size','yes'),(36,'Beef Shawarma',250.00,'Wrap','Beef',NULL,'No Size','No Size','yes'),(37,'Burger-Steak',200.00,'Meal','Rice',NULL,'No Size','No Size','no'),(38,'Beef Curry',199.00,'Beef','Curry',NULL,'No Size','No Size','yes'),(39,'Katsu Curry',199.00,'Pork','Curry',NULL,'No Size','No Size','yes'),(40,'Coke',90.00,'Drinks','Canned',NULL,'No Size','No Size','yes'),(41,'Rice',200.00,'Non-Vatable','nonvat',NULL,'No Size','No Size','no'),(42,'Tanduay',182.00,'Alcohol','Liquor',NULL,'No Size','No Size','yes'),(43,'Nestea Cranberry',27.00,'Powdered Drinks','Iced Tea',NULL,'No Size','No Size','yes'),(44,'Piattos Sour Cream',92.00,'Chips','Sour Cream',NULL,'No Size','No Size','yes');
 /*!40000 ALTER TABLE `products` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -123,8 +128,9 @@ CREATE TABLE `transactions` (
   `discount_rate` decimal(10,2) DEFAULT NULL,
   `mop` varchar(45) DEFAULT NULL,
   `tr_date` date DEFAULT NULL,
+  `cart_discount` decimal(10,2) DEFAULT NULL,
   PRIMARY KEY (`tr_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=45 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=143 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -133,7 +139,6 @@ CREATE TABLE `transactions` (
 
 LOCK TABLES `transactions` WRITE;
 /*!40000 ALTER TABLE `transactions` DISABLE KEYS */;
-INSERT INTO `transactions` VALUES (20,1,32,'product','Fries','yes',150.00,150.00,NULL,NULL,0.00,NULL,NULL,'2025-09-19'),(21,1,33,'product','Iced Tea','yes',50.00,50.00,NULL,NULL,0.00,NULL,NULL,'2025-09-19'),(22,1,34,'product','Coke','yes',30.00,30.00,NULL,NULL,0.00,NULL,NULL,'2025-09-19'),(27,11,32,'product','Fries','yes',150.00,NULL,NULL,NULL,NULL,NULL,NULL,'2025-09-19'),(28,11,33,'product','Iced Tea','yes',50.00,NULL,NULL,NULL,NULL,NULL,NULL,'2025-09-19'),(29,11,34,'product','Coke','yes',30.00,NULL,NULL,NULL,NULL,NULL,NULL,'2025-09-19'),(32,12,32,'product','Fries','yes',150.00,NULL,NULL,NULL,NULL,NULL,NULL,'2025-09-19'),(33,12,33,'product','Iced Tea','yes',50.00,NULL,NULL,NULL,NULL,NULL,NULL,'2025-09-19'),(34,12,34,'product','Coke','yes',36.00,NULL,NULL,NULL,NULL,NULL,NULL,'2025-09-19');
 /*!40000 ALTER TABLE `transactions` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -174,4 +179,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2025-09-19  2:26:46
+-- Dump completed on 2025-09-21 22:54:21

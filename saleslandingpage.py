@@ -7,6 +7,7 @@ from PySide6.QtCore import Qt
 from databaseutils import DatabaseManager
 from managementpage import ManagementPage
 from decimal import Decimal
+from PySide6.QtWidgets import QMessageBox
 
 class POSHomePage(QWidget):
     def __init__(self, username, rank, parent=None):
@@ -222,7 +223,9 @@ class POSHomePage(QWidget):
         self.total_label.setStyleSheet(self.label_stylesheet)
         
         self.btn_discount = QPushButton("add discount")
+        self.btn_discount.clicked.connect(self.open_discount_page)
         self.btn_place = QPushButton("pay order")
+        self.btn_place.clicked.connect(self.gotopay)
         for btn in [self.btn_discount, self.btn_place]:
             btn.setStyleSheet(self.button_style)
         self.ordernumber = QComboBox()
@@ -307,8 +310,87 @@ class POSHomePage(QWidget):
         
         self.sub_category.currentIndexChanged.connect(self.handle_subcategory_change)
         self.setLayout(main_layout)
-
+        self.reload_order_table()
+        self.recompute()
     # === Placeholder: Load categories dynamically ===
+    # after self.btn_discount is created:
+
+    def gotopay(self):
+        from invoicepayment import InvoicePayment
+        inv_id = self.ordernumber.currentText().strip()
+        self.payment_page = InvoicePayment(self.username, self.rank, inv_id)
+        self.payment_page.show()
+        self.hide()
+    def recompute(self):
+        """Compute VATable Sales, Total Discount, VAT Total, and Amount Payable
+        for the currently selected invoice, and update the four labels on this page.
+        """
+        VAT = Decimal("0.12")
+
+        inv_id = (self.ordernumber.currentText() or "").strip()
+        if not inv_id.isdigit():
+            # Clear labels if nothing selected
+            self.vatable_label.setText("VATable Sales: ₱0.00")
+            self.discounts_label.setText("Total Discount: ₱0.00")
+            self.vat_label.setText("VAT Total: ₱0.00")
+            self.total_label.setText("Amount Payable: ₱0.00")
+            return
+
+        # pull product lines for this invoice (vat flag, net, total_discount)
+        rows = self.db_manager.fetch_invoice_lines_for_payment(int(inv_id))
+
+        # bases are VAT-EXCLUSIVE already (net) just like in invoicepayment.py
+        vatable_base = sum((Decimal(str(r["net"])) for r in rows
+                            if str(r.get("vat", "yes")).lower() == "yes"), Decimal("0"))
+        exempt_base  = sum((Decimal(str(r["net"])) for r in rows
+                            if str(r.get("vat", "yes")).lower() != "yes"), Decimal("0"))
+
+        # sum of per-line discounts (this already exists on your rows)
+        line_discounts = sum(Decimal(str(r.get("total_discount", 0))) for r in rows)
+
+        # VAT is 12% of the VATable base (exclusive of VAT)
+        vat_amount = (vatable_base * VAT).quantize(Decimal("0.01"))
+
+        # Amount payable = (vatable + exempt) + VAT
+        subtotal_ex_vat = (vatable_base + exempt_base).quantize(Decimal("0.01"))
+        final_amount = (subtotal_ex_vat + vat_amount).quantize(Decimal("0.01"))
+
+        # Update the four labels on the Sales page
+        self.vatable_label.setText(f"VATable Sales: ₱{vatable_base:.2f}")
+        self.discounts_label.setText(f"Total Discount: ₱{line_discounts:.2f}")
+        self.vat_label.setText(f"VAT Total: ₱{vat_amount:.2f}")
+        self.total_label.setText(f"Amount Payable: ₱{final_amount:.2f}")
+
+    def open_discount_page(self):
+        from creatediscounts import CreateDiscounts
+        row = self.order_table.currentRow()
+        if row < 0:
+            print("Select a line to discount.")
+            return
+        item = self.order_table.item(row, 0)  # tr_id column
+        if not item:
+            print("No tr_id in selected row.")
+            return
+        tr_id_txt = item.text().strip()
+        tr_data = self.db_manager.fetch_transaction_by_id(int(tr_id_txt))
+        self.line_disc_rate = Decimal(str(tr_data.get("discount_rate") or "0"))
+        if self.line_disc_rate > 0: 
+            QMessageBox.warning(self,
+            "Discount Already Applied",
+            f"A discount of {self.line_disc_rate:.0f}% "
+            f"({self.line_disc_rate:.2f}) is already applied to this product.\n\n"
+            "Only one line discount is allowed. "
+        )
+        else: 
+            if not tr_id_txt.isdigit():
+                print("Invalid tr_id.")
+                return
+            
+            tr_id = int(tr_id_txt)
+            self.discount_page = CreateDiscounts(self.username, self.rank, tr_id)
+            self.discount_page.show()
+            self.hide()
+        
     def reciept_calculations():
         return
 
@@ -332,6 +414,8 @@ class POSHomePage(QWidget):
             print("Delete failed.")
 
     def reload_order_table(self):
+        
+
         inv_id = self.ordernumber.currentText().strip()
         self.order_table.setRowCount(0)
         if not inv_id.isdigit():
@@ -345,7 +429,7 @@ class POSHomePage(QWidget):
             self.order_table.setItem(i, 1, QTableWidgetItem(str(r.get("tr_desc") or "")))
             self.order_table.setItem(i, 2, QTableWidgetItem("" if r.get("gross_price") is None else str(r["gross_price"])))
             self.order_table.setItem(i, 3, QTableWidgetItem("" if r.get("discount_rate") is None else str(r["discount_rate"])))
-
+        self.recompute()
 
     def insert_new_invoice(self):
         new_id = self.db_manager.insert_invoice_new()
@@ -372,6 +456,7 @@ class POSHomePage(QWidget):
     
     
     def update_header(self):
+        self.recompute()
         self.reload_order_table()
         selected_order = self.ordernumber.currentText()
         self.header2.setText(f"Order Number: {selected_order}")
@@ -495,18 +580,48 @@ class POSHomePage(QWidget):
             print("Select an order number first.")
             return
 
+        # VAT math (keep it simple, Decimal + round)
+        VAT_RATE = Decimal("0.12")
+        gross = Decimal(str(prod['price']))          # sticker (VAT-inclusive)
+
+        # prod['vat'] is "yes"/"no" in your table — use directly
+        vat_flag = (str(prod.get('vat', 'yes')).strip().lower() == "yes")
+        rate = VAT_RATE if vat_flag else Decimal("0.00")
+
+        if rate > 0:
+            net = round(gross / (Decimal("1.00") + rate), 2)   # back-out VAT
+        else:
+            net = round(gross, 2)
+
+        vat_total = round(gross - net, 2)
+
+        # zeros
+        total_discount = Decimal("0.00")
+        rounding = Decimal("0.00")
+        discount_rate = Decimal("0.00")
+
         ok = self.db_manager.insert_transaction_item(
             inv_id=int(inv_id),
             pid=prod['pid'],
             desc=prod['product_desc'],
-            price=prod['price'],
-            vat=prod['vat'],       # your products.vat (e.g., 'yes'/'no' or 0/1)
+            vat=("yes" if vat_flag else "no"),   # keep your "yes"/"no" convention
+            gross_price=gross,
+            net=net,
+            vat_total=vat_total,
+            total_discount=total_discount,
+            rounding=rounding,
+            discount_rate=discount_rate
         )
+
         if ok:
-            print(f"Added {prod['product_desc']} (₱{prod['price']}) to invoice {inv_id}")
+            # format Decimal cleanly
+            print(f"Added {prod['product_desc']} (₱{gross:.2f}) to invoice {inv_id}")
             self.reload_order_table()
+            self.recompute()
         else:
             print("Failed to add item.")
+
+
 
         
     def load_products_with_search(self):
