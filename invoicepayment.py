@@ -79,16 +79,164 @@ class InvoicePayment(QWidget):
         root.addWidget(self.chk_vat)
 
         payrow = QHBoxLayout()
-        payrow.addWidget(QLabel("MOP:")); payrow.addWidget(self.cmb_mop)
+        self.mop_label = QLabel("MOP:")
+        payrow.addWidget(self.mop_label)
+        payrow.addWidget(self.cmb_mop)
         root.addLayout(payrow)
 
         pay2 = QHBoxLayout()
-        pay2.addWidget(QLabel("Paid:")); pay2.addWidget(self.txt_paid)
+
+        
+        self.lbl_paid = QLabel("Paid:")
+        pay2.addWidget(self.lbl_paid) 
+        pay2.addWidget(self.txt_paid)
         pay2.addWidget(self.lbl_change)
         root.addLayout(pay2)
+        self.button_style = """
+            QPushButton {
+                background-color: #0077b6;  /* Deep navy blue */
+                color: white;
+                border-radius: 20px;  /* More rounded */
+                padding: 10px 24px;
+                font-size: 15px;
+                font-family: 'Segoe UI', sans-serif;
+                font-weight: 500; 
+                letter-spacing: 0.5px;
+            }
+            QPushButton:hover {
+                background-color: #023e8a;
+            }
+            QPushButton:pressed {
+                background-color: #023e8a;
+            }
+            QPushButton:disabled {
+                background-color: #cbd5e0;
+                color: #ffffff;
+            }
+        """ 
+        self.label_style = "font-size: 24px; font-weight: bold; font-family: 'Segoe UI'; margin-bottom: 10px"
+        self.combo_box_style = """
+        QComboBox {
+        font-size: 18px;  /* Font size for consistency */
+        font-family: 'Segoe UI', sans-serif;  /* Matching font family */
+        color: #202124;  /* Darker text color */
+        background-color: #FFFFFF;  /* Pure white background */
+        border-radius: 12px;  /* Larger border radius for a more rounded appearance */
+        padding: 7px 15px;  /* Padding for better spacing */
+        border: 2px solid #D3D3D3;  /* Light gray border */
+        
+        }
 
+        QComboBox:focus {
+        border: 2px solid #1877F2;  /* Sage green border on focus */
+        outline: none;  /* Remove default outline */
+        }
+
+        QComboBox::drop-down {
+        width: 0px;  /* Hide the drop-down arrow */
+        }
+
+        QComboBox QAbstractItemView {
+        color: #202124;  /* Darker text color for list items */
+        background-color: #FFFFFF;  /* White background for the drop-down list */
+        selection-background-color: #E8EAE6;  /* Light neutral background color when an item is selected */
+        border: 1px solid #D3D3D3;  /* Border for the drop-down list */
+        border-radius: 8px;  /* Slightly rounded corners for the drop-down list */
+            }
+            """
+        self.line_style = """
+        QLineEdit {
+            background-color: #FFFFFF;
+            color: #202124;
+            border: 2px solid #EBEBEB;  /* Thinner border */
+            border-radius: 14px;
+            font-size: 16px;
+            font-family: 'Segoe UI', sans-serif;
+            padding: 9px 17px;
+        }
+        QLineEdit:focus {
+            border: 1px solid #1877F2;
+            background-color: #f5faff;
+        }
+        """
+        self.chkbox_style = """
+                QCheckBox {
+                    font-size: 13px;
+                    font-family: 'Segoe UI', sans-serif;
+                    color: black;
+                                             
+                    background-color: transparent;
+                    border: none;
+                    padding: 6px;
+                    text-align: center;
+                }
+
+                QCheckBox::indicator {
+                    width: 1.15em;
+                    height: 1.15em;
+                   
+                    border: 0.06em solid rgba(0, 0, 0, 0.275);
+                    border-radius: 0.2em;
+                    background-color: white;
+                    
+                    
+                }
+
+                QCheckBox::indicator:checked {
+                    background-color: #3B99FC;
+                    border-color: #3B99FC;
+                }
+
+                QCheckBox::indicator:checked::after {
+                    color: white;
+                    font-size: 1em;
+                    position: relative;
+                    left: 0.25em;
+                    top: 0.1em;
+                }
+
+                QCheckBox::indicator:pressed {
+                    background-color: #f0f0f0;
+                    
+                }
+
+                QCheckBox::indicator:checked:pressed {
+                    background-color: #0a7ffb;
+                }
+
+                QCheckBox::indicator:focus {
+                    
+                }
+
+                QCheckBox::indicator:disabled {
+                    opacity: 0.5;
+                }
+
+                QCheckBox::indicator:unchecked {
+                    background-color: white;
+                }
+
+                QCheckBox::indicator:unchecked:hover {
+                    background-color: #f0f0f0;
+                }
+
+                QCheckBox::indicator:unchecked:pressed {
+                    background-color: #f0f0f0;
+                }
+                """
         root.addWidget(self.btn_confirm)
+        for line_edits in [self.txt_disc_val, self.txt_paid]:
+            line_edits.setStyleSheet(self.label_style)
+        for combo in [self.cmb_mop, self.cmb_disc_type]:
+            combo.setStyleSheet(self.combo_box_style)
+        for lbl in [self.lbl_paid, self.mop_label, self.lbl_final_amount, self.lbl_change, self.lbl_cart_discount, self.lbl_change, self.lbl_exempt_sales, self.lbl_line_discounts, self.lbl_total_vat, self.lbl_vatable_sales, self.lbl_total_discount]:
+            lbl.setStyleSheet(self.label_style)
+        for btn in [self.goback, self.btn_disc, self.btn_confirm]:
+            btn.setStyleSheet(self.button_style)
+        self.chk_vat.setStyleSheet(self.chkbox_style)
 
+
+        
         self.recompute()
 
     # --- logic

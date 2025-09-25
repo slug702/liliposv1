@@ -1,4 +1,4 @@
 user=root
-password=lilsnew
+password=root
 host=localhost
 database=lilipos
