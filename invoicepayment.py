@@ -161,9 +161,9 @@ class InvoicePayment(QWidget):
         """
         self.chkbox_style = """
                 QCheckBox {
-                    font-size: 13px;
-                    font-family: 'Segoe UI', sans-serif;
                     color: black;
+                    font-size: 16px;
+                    font-family: 'Segoe UI', sans-serif;
                                              
                     background-color: transparent;
                     border: none;

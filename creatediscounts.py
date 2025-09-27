@@ -22,7 +22,45 @@ class CreateDiscounts(QWidget):
         self.rank = rank
         self.tr_id = tr_id
         self.db = DatabaseManager()
-
+        self.button_style = """
+            QPushButton {
+                background-color: #0077b6;  /* Deep navy blue */
+                color: white;
+                border-radius: 20px;  /* More rounded */
+                padding: 10px 24px;
+                font-size: 15px;
+                font-family: 'Segoe UI', sans-serif;
+                font-weight: 500; 
+                letter-spacing: 0.5px;
+            }
+            QPushButton:hover {
+                background-color: #023e8a;
+            }
+            QPushButton:pressed {
+                background-color: #023e8a;
+            }
+            QPushButton:disabled {
+                background-color: #cbd5e0;
+                color: #ffffff;
+            }
+        """
+        self.label_style = "font-size: 24px; font-weight: bold; font-family: 'Segoe UI'; margin-bottom: 10px"
+        self.line_style = """
+        QLineEdit {
+            background-color: #FFFFFF;
+            color: #202124;
+            border: 2px solid #EBEBEB;  /* Thinner border */
+            border-radius: 14px;
+            font-size: 16px;
+            font-family: 'Segoe UI', sans-serif;
+            padding: 9px 17px;
+        }
+        QLineEdit:focus {
+            border: 1px solid #1877F2;
+            background-color: #f5faff;
+        }
+        """
+        
         self.VAT_RATE = Decimal("0.12")
 
         # --- UI ---
@@ -71,6 +109,12 @@ class CreateDiscounts(QWidget):
         self.btn_calc.clicked.connect(self.calculate_discount_preview)
         self.btn_place.clicked.connect(self.place_discount_commit)
         self.goback.clicked.connect(self.gobacktosales)
+        for line_edits in [self.discount_rate]:
+            line_edits.setStyleSheet(self.label_style)
+        for lbl in [self.lbl_title, self.lbl_gross, self.lbl_net, self.lbl_vat, self.lbl_gross_after, self.lbl_net_after, self.lbl_net_before]:
+            lbl.setStyleSheet(self.label_style)
+        for btn in [self.btn_calc, self.btn_place, self.goback]:
+            btn.setStyleSheet(self.button_style)
 
     # --- Data load helpers ---
     def gobacktosales(self):
